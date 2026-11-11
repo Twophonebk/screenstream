@@ -6,8 +6,16 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const QRCode = require('qrcode');
 
 const PORT = process.env.PORT || 3000;
+
+// Branding (set in Render > Environment): BRAND_NAME, BRAND_COLOR (#hex), BRAND_LOGO (image URL)
+const BRAND = {
+  name: (process.env.BRAND_NAME || '').slice(0, 40) || null,
+  color: /^#[0-9a-fA-F]{6}$/.test(process.env.BRAND_COLOR || '') ? process.env.BRAND_COLOR : null,
+  logo: /^https:\/\//.test(process.env.BRAND_LOGO || '') ? process.env.BRAND_LOGO : null,
+};
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ICE servers (STUN/TURN). Override with env ICE_SERVERS as JSON, e.g.
@@ -24,13 +32,21 @@ if (process.env.ICE_SERVERS) {
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
+  '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json',
 };
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/config') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    return res.end(JSON.stringify({ iceServers: ICE_SERVERS }));
+    return res.end(JSON.stringify({ iceServers: ICE_SERVERS, brand: BRAND }));
+  }
+  if (url.pathname === '/qr.svg') {
+    const data = String(url.searchParams.get('d') || '').slice(0, 500);
+    if (!data) { res.writeHead(400); return res.end(); }
+    return QRCode.toString(data, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0b0d12', light: '#ffffff' } })
+      .then((svg) => { res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' }); res.end(svg); })
+      .catch(() => { res.writeHead(500); res.end(); });
   }
   if (url.pathname === '/healthz') { res.writeHead(200); return res.end('ok'); }
 
