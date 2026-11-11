@@ -50,13 +50,18 @@ Notes:
 
 | Want | Settings |
 |---|---|
+| Mixed use (default) | Content type **Mixed**, 1080p 60, 12–20 Mbps |
 | Sharp text, coding, docs | Content type **Text**, 1080p 30 or 60, 8–12 Mbps |
 | Games, video | Content type **Games**, 1080p 60, 12–20 Mbps |
-| 1440p / 4K | 20–35 Mbps, and your upload speed must be higher than that |
+| 1440p / 4K | 20–50 Mbps, and your upload speed must be higher than that |
 
 - Your **upload** speed is the limit. Check it at speedtest.net and choose a bitrate below about 70% of it.
-- The viewer bar shows the live resolution, fps and bitrate. The host's viewer list also says if quality is being "limited by cpu" or "bandwidth".
-- If it's "limited by cpu", try a different codec (H.264 usually uses your graphics card) or lower the fps.
+- Codec **Auto** picks a codec your graphics card can encode (AV1, then H.264, then VP9). The preview line shows which one it chose.
+- Content type can be switched while live: **Text** keeps full resolution, **Games** keeps full fps.
+- The host's viewer list shows resolution, fps, bitrate, GPU/CPU encoder and whether quality is "limited by cpu" or "bandwidth".
+  - "limited by bandwidth": lower the bitrate a bit, or the viewer's internet is the bottleneck.
+  - "limited by cpu": lower the fps or resolution.
+- Viewer buttons: **Actual size** shows the stream pixel-for-pixel (sharpest text, scroll if the window is small). **Smooth playback** adds ~0.15 s buffer to hide stutter from a shaky connection.
 
 ## If the viewer can't connect
 
