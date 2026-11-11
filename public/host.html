@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScreenStream Host</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="row" style="margin-bottom:18px">
+    <div class="brand"><span class="dot"></span> ScreenStream · Host</div>
+    <div style="flex:0" class="row">
+      <span id="sigStatus" class="pill">Server</span>
+      <span id="agentStatus" class="pill" title="Remote-control helper on this PC">Control helper</span>
+    </div>
+  </div>
+
+  <div class="grid cols">
+    <!-- Settings -->
+    <div class="card">
+      <h2>Stream settings</h2>
+      <label>Room code</label>
+      <input id="room" maxlength="32">
+      <label>Password (viewers need this)</label>
+      <input id="password" type="text" placeholder="Set a password">
+      <label>Quality</label>
+      <select id="quality">
+        <option value="1080p30">1080p · 30 fps</option>
+        <option value="1080p60" selected>1080p · 60 fps</option>
+        <option value="1440p60">1440p · 60 fps</option>
+        <option value="2160p30">4K · 30 fps</option>
+        <option value="native">Native screen resolution · 60 fps</option>
+      </select>
+      <label>Max bitrate</label>
+      <select id="bitrate">
+        <option value="4000000">4 Mbps (slow upload)</option>
+        <option value="8000000">8 Mbps</option>
+        <option value="12000000" selected>12 Mbps</option>
+        <option value="20000000">20 Mbps</option>
+        <option value="35000000">35 Mbps (4K / fast upload)</option>
+      </select>
+      <label>Content type</label>
+      <select id="hint">
+        <option value="detail">Text / desktop work (sharp)</option>
+        <option value="motion">Games / video (smooth)</option>
+      </select>
+      <label>Video codec</label>
+      <select id="codec">
+        <option value="video/H264">H.264 (best hardware support)</option>
+        <option value="video/VP9">VP9</option>
+        <option value="video/AV1">AV1 (best quality, newer GPUs)</option>
+        <option value="auto">Auto</option>
+      </select>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--text)">
+        <input id="sysAudio" type="checkbox" checked style="width:auto"> Share PC sound
+      </label>
+      <div class="row" style="margin-top:16px">
+        <button id="startBtn" class="primary">Start sharing</button>
+        <button id="stopBtn" class="danger hidden">Stop</button>
+      </div>
+      <div id="surfaceWarn" class="banner hidden">You are sharing a window or tab. For remote control, choose <b>Entire screen</b>.</div>
+    </div>
+
+    <!-- Live panel -->
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <h2 style="margin:0">Preview</h2>
+          <div style="flex:0" class="row">
+            <button id="micBtn" class="small" disabled>Mic off</button>
+          </div>
+        </div>
+        <video id="preview" class="preview" autoplay muted playsinline></video>
+        <div id="capInfo" class="muted" style="margin-top:6px"></div>
+        <label>Viewer link</label>
+        <div class="linkbox">
+          <input id="link" readonly>
+          <button id="copyBtn" class="small" style="flex:0">Copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Viewers</h2>
+        <div id="viewers"><div class="muted">No one has joined yet.</div></div>
+        <div id="monitorRow" class="hidden">
+          <label>Monitor that viewers control</label>
+          <select id="monitor"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/common.js"></script>
+<script>
+const PRESETS = {
+  '1080p30': { w: 1920, h: 1080, fps: 30 },
+  '1080p60': { w: 1920, h: 1080, fps: 60 },
+  '1440p60': { w: 2560, h: 1440, fps: 60 },
+  '2160p30': { w: 3840, h: 2160, fps: 30 },
+  'native':  { w: 0, h: 0, fps: 60 },
+};
+const AGENT_URL = 'ws://127.0.0.1:8765';
+
+let iceServers, signal, screenStream, micStream, micOn = false;
+const peers = new Map(); // id -> { pc, dc, name, control: 'none'|'pending'|'on', audioEl, stats }
+
+// --- Settings memory ---
+const saved = (() => { try { return JSON.parse(localStorage.getItem('ss-host') || '{}'); } catch { return {}; } })();
+$('#room').value = saved.room || Math.random().toString(36).slice(2, 8).toUpperCase();
+$('#password').value = saved.password || '';
+for (const k of ['quality', 'bitrate', 'hint', 'codec']) if (saved[k]) $('#' + k).value = saved[k];
+function saveSettings() {
+  try {
+    localStorage.setItem('ss-host', JSON.stringify({
+      room: $('#room').value, password: $('#password').value,
+      quality: $('#quality').value, bitrate: $('#bitrate').value, hint: $('#hint').value, codec: $('#codec').value,
+    }));
+  } catch {}
+}
+
+function updateLink() {
+  $('#link').value = `${location.origin}/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`;
+}
+$('#room').addEventListener('input', updateLink);
+updateLink();
+$('#copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#link').value); toast('Link copied', 'ok'); } catch { $('#link').select(); }
+};
+
+// --- Remote-control helper (runs on this PC) ---
+let agent = null, agentOk = false;
+function connectAgent() {
+  try { agent = new WebSocket(AGENT_URL); } catch { return setTimeout(connectAgent, 3000); }
+  agent.onopen = () => { agentOk = true; setAgentStatus(); broadcast({ t: 'agent', ok: true }); };
+  agent.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.t === 'monitors') {
+      const sel = $('#monitor');
+      sel.innerHTML = msg.list.map((m) => `<option value="${m.i}" ${m.primary ? 'selected' : ''}>Monitor ${m.i}: ${m.w}×${m.h}${m.primary ? ' (main)' : ''}</option>`).join('');
+      $('#monitorRow').classList.toggle('hidden', msg.list.length < 2);
+      sendAgent({ t: 'monitor', i: Number(sel.value) });
+    }
+  };
+  agent.onclose = () => {
+    if (agentOk) broadcast({ t: 'agent', ok: false });
+    agentOk = false; setAgentStatus();
+    // Release anything that might be held
+    setTimeout(connectAgent, 3000);
+  };
+  agent.onerror = () => {};
+}
+function sendAgent(msg) { if (agentOk && agent.readyState === 1) agent.send(JSON.stringify(msg)); }
+function setAgentStatus() {
+  const el = $('#agentStatus');
+  el.className = 'pill ' + (agentOk ? 'ok' : 'warn');
+  el.textContent = agentOk ? 'Control helper on' : 'Control helper off';
+  el.title = agentOk ? 'Viewers can control this PC if you allow them' : 'Run start-agent.bat on this PC to allow remote control';
+}
+$('#monitor').onchange = () => sendAgent({ t: 'monitor', i: Number($('#monitor').value) });
+setAgentStatus();
+connectAgent();
+
+// --- Start / stop ---
+$('#startBtn').onclick = start;
+$('#stopBtn').onclick = stop;
+
+async function start() {
+  const room = $('#room').value.trim().toUpperCase();
+  if (!/^[A-Z0-9-]{3,32}$/.test(room)) return toast('Room code: 3-32 letters or numbers', 'bad');
+  if (!$('#password').value) return toast('Please set a password', 'bad');
+  saveSettings();
+
+  const p = PRESETS[$('#quality').value];
+  const video = { frameRate: { ideal: p.fps, max: p.fps }, cursor: 'always' };
+  if (p.w) { video.width = { ideal: p.w, max: p.w }; video.height = { ideal: p.h, max: p.h }; }
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video,
+      audio: $('#sysAudio').checked ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, restrictOwnAudio: true } : false,
+      systemAudio: $('#sysAudio').checked ? 'include' : 'exclude',
+      surfaceSwitching: 'include',
+      selfBrowserSurface: 'exclude',
+      monitorTypeSurfaces: 'include',
+    });
+  } catch (e) {
+    return toast('Screen sharing was cancelled', 'bad');
+  }
+  const vt = screenStream.getVideoTracks()[0];
+  vt.contentHint = $('#hint').value;
+  vt.addEventListener('ended', stop);
+  $('#preview').srcObject = screenStream;
+  showCaptureInfo();
+
+  // Microphone (optional – keep going without it)
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    setMic(true);
+    $('#micBtn').disabled = false;
+  } catch { toast('No microphone access – voice from you is off'); }
+
+  iceServers = await getIceServers();
+  signal = new Signal(onSignal, (s) => {
+    $('#sigStatus').className = 'pill ' + (s === 'online' ? 'ok' : 'bad');
+    $('#sigStatus').textContent = s === 'online' ? 'Server connected' : 'Server offline';
+    if (s === 'offline' && screenStream) setTimeout(reconnectSignal, 2000);
+  });
+  try { await signal.connect(); } catch (e) { toast(e.message, 'bad'); stop(); return; }
+  signal.send({ type: 'create', room, password: $('#password').value });
+
+  $('#startBtn').classList.add('hidden');
+  $('#stopBtn').classList.remove('hidden');
+  for (const id of ['room', 'password', 'quality', 'codec', 'sysAudio']) $('#' + id).disabled = true;
+}
+
+async function reconnectSignal() {
+  if (!screenStream) return;
+  try {
+    await signal.connect();
+    signal.send({ type: 'create', room: $('#room').value.trim().toUpperCase(), password: $('#password').value });
+  } catch { setTimeout(reconnectSignal, 3000); }
+}
+
+function stop() {
+  for (const id of [...peers.keys()]) closePeer(id);
+  screenStream?.getTracks().forEach((t) => t.stop());
+  micStream?.getTracks().forEach((t) => t.stop());
+  screenStream = micStream = null;
+  if (signal?.ws) { signal.ws.onclose = null; signal.ws.close(); }
+  $('#sigStatus').className = 'pill'; $('#sigStatus').textContent = 'Server';
+  $('#preview').srcObject = null;
+  $('#capInfo').textContent = '';
+  $('#surfaceWarn').classList.add('hidden');
+  $('#startBtn').classList.remove('hidden');
+  $('#stopBtn').classList.add('hidden');
+  $('#micBtn').disabled = true; setMic(false);
+  for (const id of ['room', 'password', 'quality', 'codec', 'sysAudio']) $('#' + id).disabled = false;
+  renderViewers();
+}
+
+function showCaptureInfo() {
+  const s = screenStream.getVideoTracks()[0].getSettings();
+  const audio = screenStream.getAudioTracks().length ? 'PC sound on' : 'no PC sound';
+  $('#capInfo').textContent = `Capturing ${s.width}×${s.height} @ ${Math.round(s.frameRate || 0)} fps · ${s.displaySurface || 'screen'} · ${audio}`;
+  $('#surfaceWarn').classList.toggle('hidden', !s.displaySurface || s.displaySurface === 'monitor');
+}
+
+// --- Mic ---
+function setMic(on) {
+  micOn = on && !!micStream;
+  micStream?.getAudioTracks().forEach((t) => (t.enabled = micOn));
+  $('#micBtn').textContent = micOn ? 'Mic on' : 'Mic off';
+  $('#micBtn').classList.toggle('on', micOn);
+}
+$('#micBtn').onclick = () => setMic(!micOn);
+
+// --- Live bitrate / content changes ---
+$('#bitrate').onchange = () => { saveSettings(); for (const p of peers.values()) applyEncoding(p); };
+$('#hint').onchange = () => {
+  saveSettings();
+  const vt = screenStream?.getVideoTracks()[0];
+  if (vt) vt.contentHint = $('#hint').value;
+  for (const p of peers.values()) applyEncoding(p);
+};
+
+// --- Signaling ---
+function onSignal(msg) {
+  if (msg.type === 'created') toast(`Live in room ${msg.room}`, 'ok');
+  else if (msg.type === 'error') { toast(msg.message, 'bad'); if (!peers.size) stop(); }
+  else if (msg.type === 'viewer-joined') createPeer(msg.id, msg.name);
+  else if (msg.type === 'viewer-left') closePeer(msg.id);
+  else if (msg.type === 'signal') handleRemoteSignal(msg.from, msg.data);
+}
+
+async function createPeer(id, name) {
+  if (peers.has(id)) closePeer(id);
+  const pc = new RTCPeerConnection({ iceServers });
+  const peer = { pc, name, control: 'none', dc: null, audioEl: null, last: null, statsText: 'connecting…' };
+  peers.set(id, peer);
+
+  // Fixed transceiver order: 0 = screen video, 1 = PC sound, 2 = voice (two-way)
+  const vt = screenStream.getVideoTracks()[0];
+  const vtx = pc.addTransceiver(vt, { direction: 'sendonly', streams: [screenStream] });
+  preferCodec(vtx, $('#codec').value);
+  pc.addTransceiver(screenStream.getAudioTracks()[0] || 'audio', { direction: 'sendonly' });
+  pc.addTransceiver(micStream?.getAudioTracks()[0] || 'audio', { direction: 'sendrecv' });
+
+  pc.ontrack = (e) => {
+    if (e.track.kind !== 'audio') return;
+    const el = new Audio();
+    el.srcObject = new MediaStream([e.track]);
+    el.autoplay = true;
+    el.play().catch(() => {});
+    peer.audioEl = el;
+  };
+  pc.onicecandidate = (e) => e.candidate && signal.send({ type: 'signal', to: id, data: { candidate: e.candidate } });
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') applyEncoding(peer);
+    if (pc.connectionState === 'failed') toast(`${name}: connection failed (a TURN server may be needed, see README)`, 'bad');
+    renderViewers();
+  };
+
+  const dc = pc.createDataChannel('control', { ordered: true });
+  peer.dc = dc;
+  dc.onopen = () => dcSend(peer, { t: 'agent', ok: agentOk });
+  dc.onmessage = (e) => onControlMessage(id, JSON.parse(e.data));
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  signal.send({ type: 'signal', to: id, data: { sdp: pc.localDescription } });
+  renderViewers();
+  toast(`${name} joined`);
+}
+
+async function handleRemoteSignal(id, data) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  try {
+    if (data.sdp) await peer.pc.setRemoteDescription(data.sdp);
+    else if (data.candidate) await peer.pc.addIceCandidate(data.candidate);
+  } catch (e) { console.warn(e); }
+}
+
+async function applyEncoding(peer) {
+  const sender = peer.pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+  if (!sender) return;
+  const params = sender.getParameters();
+  if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+  const p = PRESETS[$('#quality').value];
+  params.encodings[0].maxBitrate = Number($('#bitrate').value);
+  params.encodings[0].maxFramerate = p.fps;
+  params.encodings[0].scaleResolutionDownBy = 1;
+  params.encodings[0].priority = 'high';
+  params.encodings[0].networkPriority = 'high';
+  params.degradationPreference = $('#hint').value === 'detail' ? 'maintain-resolution' : 'balanced';
+  try { await sender.setParameters(params); } catch (e) { console.warn('setParameters', e); }
+}
+
+function closePeer(id) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  if (peer.control === 'on') sendAgent({ t: 'release' });
+  peer.pc.close();
+  peer.audioEl?.pause();
+  peers.delete(id);
+  renderViewers();
+}
+
+// --- Remote control ---
+function dcSend(peer, msg) { if (peer.dc?.readyState === 'open') peer.dc.send(JSON.stringify(msg)); }
+function broadcast(msg) { for (const p of peers.values()) dcSend(p, msg); }
+
+function onControlMessage(id, msg) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  if (msg.t === 'req') {
+    if (peer.control === 'on') return;
+    peer.control = 'pending';
+    renderViewers();
+    toast(`${peer.name} is asking to control your PC`);
+    return;
+  }
+  if (msg.t === 'stop') { setControl(id, false); return; }
+  // Input events: forward only if this viewer is allowed
+  if (peer.control === 'on' && ['m', 'd', 'u', 'w', 'kd', 'ku', 'release'].includes(msg.t)) sendAgent(msg);
+}
+
+function setControl(id, allow) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  // Only one controller at a time
+  if (allow) for (const [oid, o] of peers) if (oid !== id && o.control === 'on') setControl(oid, false);
+  if (!allow && peer.control === 'on') sendAgent({ t: 'release' });
+  peer.control = allow ? 'on' : 'none';
+  dcSend(peer, { t: 'ctl', allowed: allow });
+  renderViewers();
+}
+
+function renderViewers() {
+  const box = $('#viewers');
+  if (!peers.size) { box.innerHTML = '<div class="muted">No one has joined yet.</div>'; return; }
+  box.innerHTML = '';
+  for (const [id, p] of peers) {
+    const row = document.createElement('div');
+    row.className = 'viewer';
+    const st = p.pc.connectionState;
+    const cls = st === 'connected' ? 'ok' : st === 'failed' ? 'bad' : 'warn';
+    row.innerHTML = `<div><b></b> <span class="pill ${cls}">${st}</span><div class="stats" data-stats="${id}">${p.statsText}</div></div><div class="row" style="flex:0"></div>`;
+    row.querySelector('b').textContent = p.name;
+    const actions = row.querySelector('.row');
+    const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'small ' + cls; b.textContent = label; b.onclick = fn; actions.appendChild(b); };
+    if (p.control === 'pending') {
+      btn('Allow control', 'primary', () => {
+        if (!agentOk) toast('Start the control helper (start-agent.bat) first', 'bad');
+        setControl(id, true);
+      });
+      btn('Deny', '', () => setControl(id, false));
+    } else if (p.control === 'on') {
+      btn('Take back control', 'danger', () => setControl(id, false));
+    }
+    btn('Kick', 'danger', () => closePeer(id));
+    box.appendChild(row);
+  }
+}
+
+// --- Stats every 2s ---
+setInterval(async () => {
+  for (const [id, p] of peers) {
+    if (p.pc.connectionState !== 'connected') continue;
+    const stats = await p.pc.getStats();
+    let out, rtt, route = '';
+    stats.forEach((r) => {
+      if (r.type === 'outbound-rtp' && r.kind === 'video') out = r;
+      if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
+        rtt = r.currentRoundTripTime;
+        const local = stats.get(r.localCandidateId);
+        route = local?.candidateType === 'relay' ? ' · via TURN' : '';
+      }
+    });
+    if (!out) continue;
+    let bps = 0;
+    if (p.last) bps = ((out.bytesSent - p.last.bytes) * 8) / ((out.timestamp - p.last.ts) / 1000);
+    p.last = { bytes: out.bytesSent, ts: out.timestamp };
+    const codec = stats.get(out.codecId)?.mimeType?.split('/')[1] || '';
+    const limit = out.qualityLimitationReason && out.qualityLimitationReason !== 'none' ? ` · limited by ${out.qualityLimitationReason}` : '';
+    p.statsText = `${out.frameWidth || '?'}×${out.frameHeight || '?'} @ ${Math.round(out.framesPerSecond || 0)} fps · ${fmtBitrate(bps)} · ${codec}${rtt != null ? ` · ${Math.round(rtt * 1000)} ms` : ''}${route}${limit}`;
+    const el = document.querySelector(`[data-stats="${id}"]`);
+    if (el) el.textContent = p.statsText;
+  }
+}, 2000);
+
+window.addEventListener('beforeunload', () => sendAgent({ t: 'release' }));
+</script>
+</body>
+</html>

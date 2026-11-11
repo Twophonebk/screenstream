@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScreenStream Viewer</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<!-- Join form -->
+<div id="joinView" class="center">
+  <div class="card join">
+    <div class="brand" style="margin-bottom:14px"><span class="dot"></span> Join stream</div>
+    <label>Room code</label>
+    <input id="room" maxlength="32" autocomplete="off">
+    <label>Password</label>
+    <input id="password" type="password">
+    <label>Your name</label>
+    <input id="name" maxlength="32" placeholder="Viewer">
+    <button id="joinBtn" class="primary" style="width:100%;margin-top:16px">Join</button>
+    <p class="muted" style="margin-bottom:0">Your browser will ask for microphone access so you can talk. You can mute any time.</p>
+  </div>
+</div>
+
+<!-- Stream -->
+<div id="stage" class="stage hidden">
+  <video id="video" autoplay playsinline muted tabindex="0"></video>
+  <div class="bar">
+    <span id="state" class="pill warn">Connecting…</span>
+    <button id="micBtn" class="small">Mic off</button>
+    <button id="ctlBtn" class="small" disabled title="Ask the host to control their PC">Request control</button>
+    <label class="muted" style="margin:0;display:flex;align-items:center;gap:6px">Volume
+      <input id="volume" type="range" min="0" max="1" step="0.05" value="1" style="width:90px;padding:0">
+    </label>
+    <span class="spacer"></span>
+    <span id="stats" class="stats"></span>
+    <button id="fsBtn" class="small">Fullscreen</button>
+    <button id="leaveBtn" class="small danger">Leave</button>
+  </div>
+</div>
+
+<script src="/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const savedName = (() => { try { return localStorage.getItem('ss-name') || ''; } catch { return ''; } })();
+$('#room').value = params.get('room') || '';
+$('#name').value = savedName;
+(params.get('room') ? $('#password') : $('#room')).focus();
+
+let signal, pc, dc, micStream, micOn = false, myId;
+let canControl = false, controlActive = false, hostAgent = false;
+const audioEls = [];
+const video = $('#video');
+
+$('#joinBtn').onclick = join;
+for (const id of ['room', 'password', 'name']) $('#' + id).addEventListener('keydown', (e) => e.key === 'Enter' && join());
+
+async function join() {
+  const room = $('#room').value.trim().toUpperCase();
+  if (!room) return toast('Enter the room code', 'bad');
+  try { localStorage.setItem('ss-name', $('#name').value); } catch {}
+  $('#joinBtn').disabled = true;
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    micOn = true;
+  } catch { micStream = null; micOn = false; }
+  updateMicBtn();
+
+  const iceServers = await getIceServers();
+  signal = new Signal((m) => onSignal(m, iceServers), (s) => {
+    if (s === 'offline' && pc && pc.connectionState !== 'connected') setState('Disconnected', 'bad');
+  });
+  try { await signal.connect(); }
+  catch (e) { toast(e.message, 'bad'); $('#joinBtn').disabled = false; return; }
+  signal.send({ type: 'join', room, password: $('#password').value, name: $('#name').value || 'Viewer' });
+}
+
+async function onSignal(msg, iceServers) {
+  if (msg.type === 'error') { toast(msg.message, 'bad'); $('#joinBtn').disabled = false; return; }
+  if (msg.type === 'joined') {
+    myId = msg.id;
+    $('#joinView').classList.add('hidden');
+    $('#stage').classList.remove('hidden');
+    history.replaceState(null, '', `/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`);
+    return;
+  }
+  if (msg.type === 'host-left') { setState('Host ended the stream', 'bad'); setCanControl(false); return; }
+  if (msg.type !== 'signal') return;
+
+  const data = msg.data;
+  if (data.sdp && data.sdp.type === 'offer') {
+    pc?.close();
+    pc = new RTCPeerConnection({ iceServers });
+    pc.onicecandidate = (e) => e.candidate && signal.send({ type: 'signal', data: { candidate: e.candidate } });
+    pc.ontrack = onTrack;
+    pc.ondatachannel = (e) => setupDataChannel(e.channel);
+    pc.onconnectionstatechange = () => {
+      const s = pc.connectionState;
+      if (s === 'connected') setState('Live', 'ok');
+      else if (s === 'failed') setState('Connection failed', 'bad');
+      else if (s === 'disconnected') setState('Reconnecting…', 'warn');
+    };
+    await pc.setRemoteDescription(data.sdp);
+    // Transceiver 2 is two-way voice: attach our mic
+    const voice = pc.getTransceivers()[2];
+    if (voice) {
+      voice.direction = 'sendrecv';
+      if (micStream) await voice.sender.replaceTrack(micStream.getAudioTracks()[0]);
+      micStream?.getAudioTracks().forEach((t) => (t.enabled = micOn));
+    }
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    signal.send({ type: 'signal', data: { sdp: pc.localDescription } });
+  } else if (data.candidate && pc) {
+    try { await pc.addIceCandidate(data.candidate); } catch (e) { console.warn(e); }
+  }
+}
+
+function onTrack(e) {
+  if (e.track.kind === 'video') {
+    video.srcObject = new MediaStream([e.track]);
+    video.play().catch(() => {});
+  } else {
+    const el = new Audio();
+    el.srcObject = new MediaStream([e.track]);
+    el.volume = Number($('#volume').value);
+    el.autoplay = true;
+    el.play().catch(() => toast('Click anywhere to enable sound'));
+    audioEls.push(el);
+  }
+}
+document.addEventListener('click', () => audioEls.forEach((a) => a.paused && a.play().catch(() => {})));
+$('#volume').oninput = () => audioEls.forEach((a) => (a.volume = Number($('#volume').value)));
+
+function setState(text, kind) { const el = $('#state'); el.textContent = text; el.className = 'pill ' + kind; }
+
+// --- Mic ---
+function updateMicBtn() {
+  $('#micBtn').textContent = micOn ? 'Mic on' : 'Mic off';
+  $('#micBtn').classList.toggle('on', micOn);
+}
+$('#micBtn').onclick = async () => {
+  if (!micStream) {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const voice = pc?.getTransceivers()[2];
+      if (voice) await voice.sender.replaceTrack(micStream.getAudioTracks()[0]);
+    } catch { return toast('Microphone access was blocked', 'bad'); }
+  }
+  micOn = !micOn;
+  micStream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+  updateMicBtn();
+};
+
+// --- Control channel ---
+function setupDataChannel(channel) {
+  dc = channel;
+  dc.onopen = () => { $('#ctlBtn').disabled = false; };
+  dc.onclose = () => { setCanControl(false); $('#ctlBtn').disabled = true; };
+  dc.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.t === 'ctl') {
+      setCanControl(msg.allowed);
+      toast(msg.allowed ? 'Host allowed control. Click the video to control.' : 'Control ended', msg.allowed ? 'ok' : '');
+    }
+    if (msg.t === 'agent') { hostAgent = msg.ok; updateCtlBtn(); }
+  };
+}
+function dcSend(msg) { if (dc?.readyState === 'open') dc.send(JSON.stringify(msg)); }
+
+function setCanControl(v) {
+  canControl = v;
+  if (!v) setControlActive(false);
+  else setControlActive(true);
+  updateCtlBtn();
+}
+let requested = false;
+function updateCtlBtn() {
+  const b = $('#ctlBtn');
+  b.classList.remove('on');
+  if (!canControl) { b.textContent = requested ? 'Waiting for host…' : 'Request control'; }
+  else { b.textContent = controlActive ? 'Controlling (click to pause)' : 'Control paused'; b.classList.toggle('on', controlActive); }
+  b.title = hostAgent ? '' : 'Host has not started the control helper yet';
+}
+$('#ctlBtn').onclick = () => {
+  if (!canControl) { requested = true; dcSend({ t: 'req' }); updateCtlBtn(); return; }
+  setControlActive(!controlActive);
+};
+
+function setControlActive(v) {
+  if (!v) releaseAll();
+  controlActive = v;
+  requested = false;
+  video.classList.toggle('control', v);
+  if (v) video.focus();
+  updateCtlBtn();
+}
+
+// Map a mouse event to 0..1 coordinates inside the actual video picture (ignores black bars)
+function norm(e) {
+  const r = video.getBoundingClientRect();
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const s = Math.min(r.width / vw, r.height / vh);
+  const w = vw * s, h = vh * s;
+  const x = (e.clientX - (r.left + (r.width - w) / 2)) / w;
+  const y = (e.clientY - (r.top + (r.height - h) / 2)) / h;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return null;
+  return { x: +x.toFixed(5), y: +y.toFixed(5) };
+}
+
+const BTN = ['l', 'm', 'r'];
+const pressedKeys = new Set(), pressedBtns = new Set();
+let pendingMove = null, wheelAcc = 0, wheelAccX = 0;
+
+video.addEventListener('mousemove', (e) => {
+  if (!controlActive) return;
+  const p = norm(e);
+  if (!p) return;
+  if (!pendingMove) requestAnimationFrame(() => { dcSend({ t: 'm', ...pendingMove }); pendingMove = null; });
+  pendingMove = p;
+});
+video.addEventListener('mousedown', (e) => {
+  if (!controlActive) return;
+  const p = norm(e); if (!p) return;
+  e.preventDefault(); video.focus();
+  const b = BTN[e.button] || 'l';
+  pressedBtns.add(b);
+  dcSend({ t: 'm', ...p }); dcSend({ t: 'd', b });
+});
+window.addEventListener('mouseup', (e) => {
+  if (!controlActive) return;
+  const b = BTN[e.button] || 'l';
+  if (!pressedBtns.has(b)) return;
+  pressedBtns.delete(b);
+  dcSend({ t: 'u', b });
+});
+video.addEventListener('contextmenu', (e) => controlActive && e.preventDefault());
+video.addEventListener('wheel', (e) => {
+  if (!controlActive) return;
+  e.preventDefault();
+  const k = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+  wheelAcc += e.deltaY * k; wheelAccX += e.deltaX * k;
+  const dy = Math.trunc(wheelAcc / 100), dx = Math.trunc(wheelAccX / 100);
+  if (dy || dx) { dcSend({ t: 'w', dx, dy: -dy }); wheelAcc -= dy * 100; wheelAccX -= dx * 100; }
+}, { passive: false });
+
+function keyHandler(e) {
+  if (!controlActive) return;
+  if (document.activeElement !== video && !document.fullscreenElement) return;
+  e.preventDefault();
+  if (e.type === 'keydown') { pressedKeys.add(e.code); dcSend({ t: 'kd', code: e.code, key: e.key }); }
+  else { pressedKeys.delete(e.code); dcSend({ t: 'ku', code: e.code, key: e.key }); }
+}
+window.addEventListener('keydown', keyHandler, true);
+window.addEventListener('keyup', keyHandler, true);
+
+// Never leave keys or buttons stuck on the host
+function releaseAll() {
+  for (const code of pressedKeys) dcSend({ t: 'ku', code });
+  for (const b of pressedBtns) dcSend({ t: 'u', b });
+  pressedKeys.clear(); pressedBtns.clear();
+  dcSend({ t: 'release' });
+}
+window.addEventListener('blur', () => controlActive && releaseAll());
+document.addEventListener('visibilitychange', () => document.hidden && controlActive && releaseAll());
+
+// --- Fullscreen (locks keyboard in Chrome/Edge so Alt+Tab, Win etc. go to the host) ---
+$('#fsBtn').onclick = async () => {
+  if (document.fullscreenElement) return document.exitFullscreen();
+  await $('#stage').requestFullscreen().catch(() => {});
+  try { await navigator.keyboard?.lock(); } catch {}
+  video.focus();
+};
+document.addEventListener('fullscreenchange', () => {
+  $('#fsBtn').textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
+  if (!document.fullscreenElement) navigator.keyboard?.unlock?.();
+});
+
+$('#leaveBtn').onclick = () => {
+  releaseAll();
+  pc?.close(); signal?.ws?.close();
+  micStream?.getTracks().forEach((t) => t.stop());
+  location.href = '/watch?room=' + encodeURIComponent($('#room').value.trim().toUpperCase());
+};
+
+// --- Stats ---
+let lastIn = null;
+setInterval(async () => {
+  if (!pc || pc.connectionState !== 'connected') return;
+  const stats = await pc.getStats();
+  let inb, rtt;
+  stats.forEach((r) => {
+    if (r.type === 'inbound-rtp' && r.kind === 'video') inb = r;
+    if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') rtt = r.currentRoundTripTime;
+  });
+  if (!inb) return;
+  let bps = 0;
+  if (lastIn) bps = ((inb.bytesReceived - lastIn.b) * 8) / ((inb.timestamp - lastIn.t) / 1000);
+  lastIn = { b: inb.bytesReceived, t: inb.timestamp };
+  $('#stats').textContent = `${inb.frameWidth || '?'}×${inb.frameHeight || '?'} · ${Math.round(inb.framesPerSecond || 0)} fps · ${fmtBitrate(bps)}${rtt != null ? ` · ${Math.round(rtt * 1000)} ms` : ''}`;
+}, 2000);
+</script>
+</body>
+</html>
