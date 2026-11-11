@@ -2,64 +2,102 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScreenStream Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Watch</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<!-- Join form -->
-<div id="joinView" class="center">
-  <div class="card join">
-    <div class="brand" style="margin-bottom:14px"><span class="dot"></span> Join stream</div>
-    <label>Room code</label>
-    <input id="room" maxlength="32" autocomplete="off">
-    <label>Password</label>
-    <input id="password" type="password">
-    <label>Your name</label>
-    <input id="name" maxlength="32" placeholder="Viewer">
-    <button id="joinBtn" class="primary" style="width:100%;margin-top:16px">Join</button>
-    <p class="muted" style="margin-bottom:0">Your browser will ask for microphone access so you can talk. You can mute any time.</p>
+<body class="watch">
+<!-- Join -->
+<div id="joinView" class="join-screen">
+  <div class="card join-card">
+    <div class="join-head">
+      <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
+      <button class="lang-toggle chip-btn">VI</button>
+    </div>
+    <h1 data-i18n="join_title">Join the stream</h1>
+    <label><span data-i18n="room_code">Room code</span><input id="room" maxlength="32" autocomplete="off"></label>
+    <label><span data-i18n="password">Password</span><input id="password" type="password"></label>
+    <label><span data-i18n="name">Your name</span><input id="name" maxlength="32" data-i18n-ph="name_ph"></label>
+    <button id="joinBtn" class="btn primary block xl"><span data-icon="play"></span><span data-i18n="join">Join</span></button>
+    <p class="muted small" style="margin:0" data-i18n="join_note"></p>
   </div>
 </div>
 
 <!-- Stream -->
 <div id="stage" class="stage hidden">
   <div id="vp" class="viewport"><video id="video" autoplay playsinline muted tabindex="0"></video></div>
-  <div class="bar">
-    <span id="state" class="pill warn">Connecting…</span>
-    <button id="micBtn" class="small">Mic off</button>
-    <button id="ctlBtn" class="small" disabled title="Ask the host to control their PC">Request control</button>
-    <label class="muted" style="margin:0;display:flex;align-items:center;gap:6px">Volume
-      <input id="volume" type="range" min="0" max="1" step="0.05" value="1" style="width:90px;padding:0">
-    </label>
-    <button id="sizeBtn" class="small" title="Show every pixel 1:1 - sharpest text">Actual size</button>
-    <button id="smoothBtn" class="small" title="Small extra delay that hides network hiccups">Smooth playback</button>
+  <div id="waiting" class="waiting"><div class="spinner"></div><span data-i18n="connecting">Connecting…</span></div>
+  <div id="reactLayer" class="react-layer"></div>
+
+  <div class="ov ov-top">
+    <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
+    <span id="state" class="live-badge off"><i></i><span id="stateText" data-i18n="connecting"></span></span>
+    <span id="tierLabel" class="tier-badge hidden"></span>
     <span class="spacer"></span>
     <span id="stats" class="stats"></span>
-    <button id="fsBtn" class="small">Fullscreen</button>
-    <button id="leaveBtn" class="small danger">Leave</button>
+    <span id="health" class="health"></span>
+    <button class="lang-toggle chip-btn">VI</button>
   </div>
+  <div id="vtip" class="vtip-bar hidden"><span data-icon="info"></span><span id="vtipText"></span></div>
+
+  <div class="ov ov-bottom">
+    <div class="dock">
+      <button id="micBtn" class="icon-btn"></button>
+      <div class="vol">
+        <button id="muteBtn" class="icon-btn"></button>
+        <input id="volume" type="range" min="0" max="1" step="0.05" value="1" data-i18n-title="volume">
+      </div>
+      <span class="sep"></span>
+      <button id="ctlBtn" class="icon-btn wide" disabled><span data-icon="cursor"></span><span id="ctlText"></span></button>
+      <span class="sep"></span>
+      <button id="reactBtn" class="icon-btn" data-i18n-title="reactions"><span data-icon="smile"></span></button>
+      <button id="chatBtn" class="icon-btn" data-i18n-title="chat"><span data-icon="chat"></span><b id="unread" class="badge hidden">0</b></button>
+      <span class="sep"></span>
+      <button id="sizeBtn" class="icon-btn hide-mobile"><span data-icon="zoom"></span></button>
+      <button id="smoothBtn" class="icon-btn" data-i18n-title="smooth"><span data-icon="wave"></span></button>
+      <button id="fsBtn" class="icon-btn"></button>
+      <button id="leaveBtn" class="icon-btn danger" data-i18n-title="leave"><span data-icon="leave"></span></button>
+    </div>
+  </div>
+  <div id="reactPop" class="react-pop hidden"></div>
+
+  <aside id="chatPanel" class="chat-panel hidden">
+    <div class="card-head"><h2 data-i18n="chat">Chat</h2><button id="chatClose" class="icon-btn"><span data-icon="close"></span></button></div>
+    <div id="chatList" class="chat-list"><div class="empty" data-i18n="chat_empty">No messages yet.</div></div>
+    <div id="reactRow" class="react-row"></div>
+    <form id="chatForm" class="chat-form">
+      <input id="chatInput" maxlength="300" autocomplete="off" data-i18n-ph="chat_ph">
+      <button class="icon-btn" data-i18n-title="send"><span data-icon="send"></span></button>
+    </form>
+  </aside>
 </div>
 
 <script src="/common.js"></script>
 <script>
+initPage('join_title');
+
 const params = new URLSearchParams(location.search);
-const savedName = (() => { try { return localStorage.getItem('ss-name') || ''; } catch { return ''; } })();
+const stage = $('#stage'), video = $('#video');
 $('#room').value = params.get('room') || '';
-$('#name').value = savedName;
+try { $('#name').value = localStorage.getItem('ss-name') || ''; } catch {}
 (params.get('room') ? $('#password') : $('#room')).focus();
 
-let signal, pc, dc, micStream, micOn = false, myId;
-let canControl = false, controlActive = false, hostAgent = false;
+let signal, pc, dc, micStream, micOn = false;
+let canControl = false, controlActive = false, hostAgent = false, requested = false;
+let hostQ = null, stateKey = 'connecting', stateKind = 'off';
 const audioEls = [];
-const video = $('#video');
 
 $('#joinBtn').onclick = join;
 for (const id of ['room', 'password', 'name']) $('#' + id).addEventListener('keydown', (e) => e.key === 'Enter' && join());
 
 async function join() {
   const room = $('#room').value.trim().toUpperCase();
-  if (!room) return toast('Enter the room code', 'bad');
+  if (!room) { $('#room').focus(); return toast(t('enter_room'), 'bad'); }
   try { localStorage.setItem('ss-name', $('#name').value); } catch {}
   $('#joinBtn').disabled = true;
 
@@ -71,23 +109,28 @@ async function join() {
 
   const iceServers = await getIceServers();
   signal = new Signal((m) => onSignal(m, iceServers), (s) => {
-    if (s === 'offline' && pc && pc.connectionState !== 'connected') setState('Disconnected', 'bad');
+    if (s === 'offline' && pc && pc.connectionState !== 'connected') setState('disconnected', 'off');
   });
   try { await signal.connect(); }
   catch (e) { toast(e.message, 'bad'); $('#joinBtn').disabled = false; return; }
-  signal.send({ type: 'join', room, password: $('#password').value, name: $('#name').value || 'Viewer' });
+  signal.send({ type: 'join', room, password: $('#password').value, name: $('#name').value.trim() || t('name_ph') });
 }
 
 async function onSignal(msg, iceServers) {
   if (msg.type === 'error') { toast(msg.message, 'bad'); $('#joinBtn').disabled = false; return; }
   if (msg.type === 'joined') {
-    myId = msg.id;
     $('#joinView').classList.add('hidden');
-    $('#stage').classList.remove('hidden');
+    stage.classList.remove('hidden');
     history.replaceState(null, '', `/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`);
+    wake();
     return;
   }
-  if (msg.type === 'host-left') { setState('Host ended the stream', 'bad'); setCanControl(false); return; }
+  if (msg.type === 'host-left') {
+    setState('host_ended', 'off'); setCanControl(false);
+    $('#waiting').classList.remove('hidden'); $('#waiting span').textContent = t('host_ended');
+    $('#waiting .spinner').classList.add('hidden');
+    return;
+  }
   if (msg.type !== 'signal') return;
 
   const data = msg.data;
@@ -99,18 +142,18 @@ async function onSignal(msg, iceServers) {
     pc.ondatachannel = (e) => setupDataChannel(e.channel);
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState;
-      if (s === 'connected') setState('Live', 'ok');
-      else if (s === 'failed') setState('Connection failed', 'bad');
-      else if (s === 'disconnected') setState('Reconnecting…', 'warn');
+      if (s === 'connected') setState('live', 'live');
+      else if (s === 'failed') setState('conn_lost', 'off');
+      else if (s === 'disconnected') setState('reconnecting', 'off');
     };
     await pc.setRemoteDescription(data.sdp);
     applySmooth();
-    // Transceiver 2 is two-way voice: attach our mic
+    // mid 2 is two-way voice: attach our mic
     const voice = pc.getTransceivers()[2];
     if (voice) {
       voice.direction = 'sendrecv';
       if (micStream) await voice.sender.replaceTrack(micStream.getAudioTracks()[0]);
-      micStream?.getAudioTracks().forEach((t) => (t.enabled = micOn));
+      micStream?.getAudioTracks().forEach((tr) => (tr.enabled = micOn));
     }
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -120,59 +163,43 @@ async function onSignal(msg, iceServers) {
   }
 }
 
+function setState(key, kind) {
+  stateKey = key; stateKind = kind;
+  $('#state').className = 'live-badge' + (kind === 'live' ? '' : ' off');
+  $('#stateText').textContent = t(key);
+}
+
 function onTrack(e) {
   if (e.track.kind === 'video') {
     video.srcObject = new MediaStream([e.track]);
     video.play().catch(() => {});
+    video.addEventListener('playing', () => $('#waiting').classList.add('hidden'), { once: true });
   } else {
     const el = new Audio();
     el.srcObject = new MediaStream([e.track]);
-    el.volume = Number($('#volume').value);
     el.autoplay = true;
-    el.play().catch(() => toast('Click anywhere to enable sound'));
+    applyVolume(el);
+    el.play().catch(() => toast(t('click_sound')));
     audioEls.push(el);
   }
 }
 document.addEventListener('click', () => audioEls.forEach((a) => a.paused && a.play().catch(() => {})));
-$('#volume').oninput = () => audioEls.forEach((a) => (a.volume = Number($('#volume').value)));
 
-// --- View options ---
-const pref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1'; } catch { return d; } };
-const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch {} };
-let nativeSize = pref('ss-native', false), smooth = pref('ss-smooth', false);
-
-// Actual size: 1 stream pixel = 1 screen pixel, so text is never blurred by scaling
-function applySize() {
-  $('#vp').classList.toggle('native', nativeSize);
-  if (nativeSize && video.videoWidth) {
-    video.style.width = video.videoWidth / devicePixelRatio + 'px';
-    video.style.height = video.videoHeight / devicePixelRatio + 'px';
-  } else {
-    video.style.width = video.style.height = '';
-  }
-  $('#sizeBtn').textContent = nativeSize ? 'Fit to window' : 'Actual size';
-  $('#sizeBtn').classList.toggle('on', nativeSize);
+// ---------------------------------------------------------------- dock: audio
+let muted = false;
+function applyVolume(el) { el.volume = Number($('#volume').value); el.muted = muted; }
+$('#volume').oninput = () => { muted = false; audioEls.forEach(applyVolume); updateMuteBtn(); };
+$('#muteBtn').onclick = () => { muted = !muted; audioEls.forEach(applyVolume); updateMuteBtn(); };
+function updateMuteBtn() {
+  const b = $('#muteBtn');
+  b.innerHTML = icon(muted || Number($('#volume').value) === 0 ? 'volumeOff' : 'volume');
+  b.title = t('volume');
 }
-$('#sizeBtn').onclick = () => { nativeSize = !nativeSize; savePref('ss-native', nativeSize); applySize(); };
-video.addEventListener('resize', applySize);
-applySize();
-
-// Smooth playback: ~150 ms buffer hides network jitter (less stutter, slightly more delay)
-function applySmooth() {
-  pc?.getReceivers().forEach((r) => {
-    try { r.jitterBufferTarget = smooth ? 150 : null; } catch {}
-  });
-  $('#smoothBtn').classList.toggle('on', smooth);
-}
-$('#smoothBtn').onclick = () => { smooth = !smooth; savePref('ss-smooth', smooth); applySmooth(); };
-applySmooth();
-
-function setState(text, kind) { const el = $('#state'); el.textContent = text; el.className = 'pill ' + kind; }
-
-// --- Mic ---
 function updateMicBtn() {
-  $('#micBtn').textContent = micOn ? 'Mic on' : 'Mic off';
-  $('#micBtn').classList.toggle('on', micOn);
+  const b = $('#micBtn');
+  b.innerHTML = icon(micOn ? 'mic' : 'micOff');
+  b.classList.toggle('on', micOn); b.classList.toggle('off', !micOn);
+  b.title = t(micOn ? 'mic_on' : 'mic_off');
 }
 $('#micBtn').onclick = async () => {
   if (!micStream) {
@@ -180,58 +207,185 @@ $('#micBtn').onclick = async () => {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       const voice = pc?.getTransceivers()[2];
       if (voice) await voice.sender.replaceTrack(micStream.getAudioTracks()[0]);
-    } catch { return toast('Microphone access was blocked', 'bad'); }
+    } catch { return toast(t('mic_blocked'), 'bad'); }
   }
   micOn = !micOn;
-  micStream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+  micStream.getAudioTracks().forEach((tr) => (tr.enabled = micOn));
   updateMicBtn();
 };
 
-// --- Control channel ---
+// ---------------------------------------------------------------- dock: view options
+const pref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1'; } catch { return d; } };
+const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch {} };
+let nativeSize = pref('ss-native', false), smooth = pref('ss-smooth', false);
+
+function applySize() {
+  $('#vp').classList.toggle('native', nativeSize);
+  if (nativeSize && video.videoWidth) {
+    video.style.width = video.videoWidth / devicePixelRatio + 'px';
+    video.style.height = video.videoHeight / devicePixelRatio + 'px';
+  } else video.style.width = video.style.height = '';
+  const b = $('#sizeBtn');
+  b.classList.toggle('on', nativeSize);
+  b.title = t(nativeSize ? 'fit' : 'actual_size');
+}
+$('#sizeBtn').onclick = () => { nativeSize = !nativeSize; savePref('ss-native', nativeSize); applySize(); };
+video.addEventListener('resize', applySize);
+
+function applySmooth() {
+  pc?.getReceivers().forEach((r) => { try { r.jitterBufferTarget = smooth ? 150 : null; } catch {} });
+  $('#smoothBtn').classList.toggle('on', smooth);
+}
+$('#smoothBtn').onclick = () => { smooth = !smooth; savePref('ss-smooth', smooth); applySmooth(); };
+
+function updateFsBtn() {
+  const fs = !!document.fullscreenElement;
+  $('#fsBtn').innerHTML = icon(fs ? 'shrink' : 'expand');
+  $('#fsBtn').title = t(fs ? 'exit_fs' : 'fullscreen');
+}
+$('#fsBtn').onclick = async () => {
+  if (document.fullscreenElement) return document.exitFullscreen();
+  if (stage.requestFullscreen) {
+    await stage.requestFullscreen().catch(() => {});
+    try { await navigator.keyboard?.lock(); } catch {}
+    if (matchMedia('(pointer: coarse)').matches) { try { await screen.orientation.lock('landscape'); } catch {} }
+  } else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iPhone
+  video.focus();
+};
+document.addEventListener('fullscreenchange', () => {
+  updateFsBtn();
+  if (!document.fullscreenElement) navigator.keyboard?.unlock?.();
+});
+
+$('#leaveBtn').onclick = () => {
+  releaseAll();
+  pc?.close(); signal?.ws?.close();
+  micStream?.getTracks().forEach((tr) => tr.stop());
+  location.href = '/watch?room=' + encodeURIComponent($('#room').value.trim().toUpperCase());
+};
+
+// ---------------------------------------------------------------- auto-hiding overlay
+let idleTimer;
+function overlayBusy() {
+  return !$('#reactPop').classList.contains('hidden') || !!document.querySelector('.ov:hover');
+}
+function wake(e) {
+  if (controlActive && e && e.clientY != null) {
+    const nearEdge = e.clientY > innerHeight - 110 || e.clientY < 70;
+    if (!nearEdge && !overlayBusy()) { stage.classList.add('idle'); return; }
+  }
+  stage.classList.remove('idle');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(function hide() {
+    if (overlayBusy()) { idleTimer = setTimeout(hide, 1000); return; }
+    stage.classList.add('idle');
+  }, controlActive ? 1500 : 2800);
+}
+stage.addEventListener('mousemove', wake);
+stage.addEventListener('touchstart', (e) => {
+  if (controlActive) return;
+  if (e.target.closest('.ov, .chat-panel, .react-pop')) { wake(); return; }
+  if (stage.classList.contains('idle')) wake(); else stage.classList.add('idle');
+}, { passive: true });
+
+// ---------------------------------------------------------------- reactions + chat
+let unread = 0;
+const chatOpen = () => !$('#chatPanel').classList.contains('hidden');
+function sendReaction(e) { spawnReaction($('#reactLayer'), e); dcSend({ t: 'react', e }); }
+buildReactionButtons($('#reactPop'), (e) => { sendReaction(e); $('#reactPop').classList.add('hidden'); });
+buildReactionButtons($('#reactRow'), sendReaction);
+$('#reactBtn').onclick = (ev) => {
+  ev.stopPropagation();
+  const pop = $('#reactPop');
+  pop.classList.toggle('hidden');
+  if (!pop.classList.contains('hidden')) {
+    const r = $('#reactBtn').getBoundingClientRect();
+    const w = pop.offsetWidth;
+    pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    pop.style.top = (r.top - pop.offsetHeight - 10) + 'px';
+  }
+};
+document.addEventListener('click', (e) => { if (!e.target.closest('#reactPop, #reactBtn')) $('#reactPop').classList.add('hidden'); });
+
+function setUnread(n) { unread = n; $('#unread').textContent = n > 9 ? '9+' : n; $('#unread').classList.toggle('hidden', !n); }
+$('#chatBtn').onclick = () => {
+  $('#chatPanel').classList.toggle('hidden');
+  $('#chatBtn').classList.toggle('on', chatOpen());
+  if (chatOpen()) { setUnread(0); $('#chatList').scrollTop = 1e9; if (!matchMedia('(pointer: coarse)').matches) $('#chatInput').focus(); }
+};
+$('#chatClose').onclick = () => { $('#chatPanel').classList.add('hidden'); $('#chatBtn').classList.remove('on'); video.focus(); };
+$('#chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('#chatInput').value.trim().slice(0, 300);
+  if (!text || dc?.readyState !== 'open') return;
+  $('#chatInput').value = '';
+  addChatLine($('#chatList'), { name: t('you'), text, self: true });
+  dcSend({ t: 'chat', text });
+};
+function incomingChat(line) {
+  addChatLine($('#chatList'), line);
+  if (!chatOpen() && !line.sys) {
+    setUnread(unread + 1);
+    toast(`${line.name}: ${line.text.slice(0, 80)}`);
+  }
+}
+
+// ---------------------------------------------------------------- data channel
 function setupDataChannel(channel) {
   dc = channel;
   dc.onopen = () => { $('#ctlBtn').disabled = false; };
   dc.onclose = () => { setCanControl(false); $('#ctlBtn').disabled = true; };
   dc.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.t === 'ctl') {
-      setCanControl(msg.allowed);
-      toast(msg.allowed ? 'Host allowed control. Click the video to control.' : 'Control ended', msg.allowed ? 'ok' : '');
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    switch (msg.t) {
+      case 'ctl':
+        setCanControl(msg.allowed);
+        toast(t(msg.allowed ? 'control_granted' : 'control_ended'), msg.allowed ? 'ok' : '');
+        break;
+      case 'agent': hostAgent = msg.ok; updateCtlBtn(); break;
+      case 'q': hostQ = msg; updateTier(); break;
+      case 'chat': incomingChat({ name: msg.host ? t('host_name') : String(msg.name || ''), text: String(msg.text || '').slice(0, 300) }); break;
+      case 'sys': incomingChat({ sys: true, text: t(msg.key === 'left' ? 'left' : 'joined', { name: String(msg.name || '') }) }); break;
+      case 'react': spawnReaction($('#reactLayer'), msg.e); break;
     }
-    if (msg.t === 'agent') { hostAgent = msg.ok; updateCtlBtn(); }
   };
 }
 function dcSend(msg) { if (dc?.readyState === 'open') dc.send(JSON.stringify(msg)); }
+function updateTier() {
+  const el = $('#tierLabel');
+  if (!hostQ) { el.classList.add('hidden'); return; }
+  el.textContent = hostQ.label + (hostQ.auto ? ` · ${t('p_auto')}` : '');
+  el.classList.remove('hidden');
+}
 
+// ---------------------------------------------------------------- remote control
 function setCanControl(v) {
   canControl = v;
-  if (!v) setControlActive(false);
-  else setControlActive(true);
-  updateCtlBtn();
+  requested = false;
+  setControlActive(v);
 }
-let requested = false;
 function updateCtlBtn() {
   const b = $('#ctlBtn');
-  b.classList.remove('on');
-  if (!canControl) { b.textContent = requested ? 'Waiting for host…' : 'Request control'; }
-  else { b.textContent = controlActive ? 'Controlling (click to pause)' : 'Control paused'; b.classList.toggle('on', controlActive); }
-  b.title = hostAgent ? '' : 'Host has not started the control helper yet';
+  let key = 'request_control';
+  if (canControl) key = controlActive ? 'control_on' : 'control_paused';
+  else if (requested) key = 'waiting_host';
+  $('#ctlText').textContent = t(key);
+  b.classList.toggle('on', canControl && controlActive);
+  b.title = !hostAgent && !canControl ? t('no_helper') : t(key);
 }
 $('#ctlBtn').onclick = () => {
   if (!canControl) { requested = true; dcSend({ t: 'req' }); updateCtlBtn(); return; }
   setControlActive(!controlActive);
 };
-
 function setControlActive(v) {
   if (!v) releaseAll();
   controlActive = v;
-  requested = false;
-  video.classList.toggle('control', v);
+  stage.classList.toggle('controlling', v);
   if (v) video.focus();
   updateCtlBtn();
 }
 
-// Map a mouse event to 0..1 coordinates inside the actual video picture (ignores black bars)
+// Map a point to 0..1 inside the actual picture (ignores black bars)
 function norm(e) {
   const r = video.getBoundingClientRect();
   const vw = video.videoWidth, vh = video.videoHeight;
@@ -243,7 +397,6 @@ function norm(e) {
   if (x < 0 || x > 1 || y < 0 || y > 1) return null;
   return { x: +x.toFixed(5), y: +y.toFixed(5) };
 }
-
 const BTN = ['l', 'm', 'r'];
 const pressedKeys = new Set(), pressedBtns = new Set();
 let pendingMove = null, wheelAcc = 0, wheelAccX = 0;
@@ -279,9 +432,26 @@ video.addEventListener('wheel', (e) => {
   const dy = Math.trunc(wheelAcc / 100), dx = Math.trunc(wheelAccX / 100);
   if (dy || dx) { dcSend({ t: 'w', dx, dy: -dy }); wheelAcc -= dy * 100; wheelAccX -= dx * 100; }
 }, { passive: false });
+// Touch: tap = left click
+video.addEventListener('touchstart', (e) => {
+  if (!controlActive) return;
+  const p = norm(e.touches[0]); if (!p) return;
+  e.preventDefault();
+  dcSend({ t: 'm', ...p }); dcSend({ t: 'd', b: 'l' }); pressedBtns.add('l');
+}, { passive: false });
+video.addEventListener('touchmove', (e) => {
+  if (!controlActive) return;
+  const p = norm(e.touches[0]); if (!p) return;
+  e.preventDefault(); dcSend({ t: 'm', ...p });
+}, { passive: false });
+video.addEventListener('touchend', (e) => {
+  if (!controlActive || !pressedBtns.has('l')) return;
+  e.preventDefault(); pressedBtns.delete('l'); dcSend({ t: 'u', b: 'l' });
+}, { passive: false });
 
 function keyHandler(e) {
   if (!controlActive) return;
+  if (e.target.closest && e.target.closest('input, textarea, .chat-panel')) return;
   if (document.activeElement !== video && !document.fullscreenElement) return;
   e.preventDefault();
   if (e.type === 'keydown') { pressedKeys.add(e.code); dcSend({ t: 'kd', code: e.code, key: e.key }); }
@@ -290,7 +460,6 @@ function keyHandler(e) {
 window.addEventListener('keydown', keyHandler, true);
 window.addEventListener('keyup', keyHandler, true);
 
-// Never leave keys or buttons stuck on the host
 function releaseAll() {
   for (const code of pressedKeys) dcSend({ t: 'ku', code });
   for (const b of pressedBtns) dcSend({ t: 'u', b });
@@ -300,41 +469,50 @@ function releaseAll() {
 window.addEventListener('blur', () => controlActive && releaseAll());
 document.addEventListener('visibilitychange', () => document.hidden && controlActive && releaseAll());
 
-// --- Fullscreen (locks keyboard in Chrome/Edge so Alt+Tab, Win etc. go to the host) ---
-$('#fsBtn').onclick = async () => {
-  if (document.fullscreenElement) return document.exitFullscreen();
-  await $('#stage').requestFullscreen().catch(() => {});
-  try { await navigator.keyboard?.lock(); } catch {}
-  video.focus();
-};
-document.addEventListener('fullscreenchange', () => {
-  $('#fsBtn').textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
-  if (!document.fullscreenElement) navigator.keyboard?.unlock?.();
-});
-
-$('#leaveBtn').onclick = () => {
-  releaseAll();
-  pc?.close(); signal?.ws?.close();
-  micStream?.getTracks().forEach((t) => t.stop());
-  location.href = '/watch?room=' + encodeURIComponent($('#room').value.trim().toUpperCase());
-};
-
-// --- Stats ---
-let lastIn = null;
+// ---------------------------------------------------------------- stats + health (every 2 s)
+let lastIn = null, lastTipAt = 0;
+const RANK = { good: 0, ok: 1, bad: 2 };
 setInterval(async () => {
   if (!pc || pc.connectionState !== 'connected') return;
-  const stats = await pc.getStats();
-  let inb, rtt;
-  stats.forEach((r) => {
+  const st = await pc.getStats();
+  let inb, pair;
+  st.forEach((r) => {
     if (r.type === 'inbound-rtp' && r.kind === 'video') inb = r;
-    if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') rtt = r.currentRoundTripTime;
+    if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r;
   });
   if (!inb) return;
-  let bps = 0;
-  if (lastIn) bps = ((inb.bytesReceived - lastIn.b) * 8) / ((inb.timestamp - lastIn.t) / 1000);
-  lastIn = { b: inb.bytesReceived, t: inb.timestamp };
-  $('#stats').textContent = `${inb.frameWidth || '?'}×${inb.frameHeight || '?'} · ${Math.round(inb.framesPerSecond || 0)} fps · ${fmtBitrate(bps)}${rtt != null ? ` · ${Math.round(rtt * 1000)} ms` : ''}`;
+  let bps = 0, loss = 0;
+  if (lastIn) {
+    const dt = (inb.timestamp - lastIn.t) / 1000;
+    bps = ((inb.bytesReceived - lastIn.b) * 8) / dt;
+    const got = inb.packetsReceived - lastIn.pr, lost = Math.max(0, inb.packetsLost - lastIn.pl);
+    loss = got + lost > 0 ? lost / (got + lost) : 0;
+  }
+  lastIn = { b: inb.bytesReceived, t: inb.timestamp, pr: inb.packetsReceived, pl: inb.packetsLost };
+  const rtt = (pair?.currentRoundTripTime || 0) * 1000;
+  $('#stats').textContent = `${inb.frameWidth || '?'}×${inb.frameHeight || '?'} · ${Math.round(inb.framesPerSecond || 0)} fps · ${fmtBitrate(bps)} · ${Math.round(rtt)} ms`;
+
+  let level = 'good', tip = null;
+  if (loss > 0.015 || rtt > 150) { level = 'ok'; tip = 'vtip_net'; }
+  if (loss > 0.05 || rtt > 300) { level = 'bad'; tip = 'vtip_net'; }
+  if (hostQ?.level && RANK[hostQ.level] > RANK[level]) { level = hostQ.level; tip = hostQ.tip; }
+  setHealth($('#health'), level, tip);
+  if (level === 'bad' && tip === 'vtip_net' && Date.now() - lastTipAt > 60000) {
+    lastTipAt = Date.now();
+    $('#vtipText').textContent = t(tip);
+    $('#vtip').classList.remove('hidden');
+    setTimeout(() => $('#vtip').classList.add('hidden'), 7000);
+  }
 }, 2000);
+
+// ---------------------------------------------------------------- init
+function refreshTexts() {
+  updateMicBtn(); updateMuteBtn(); applySize(); applySmooth(); updateFsBtn(); updateCtlBtn(); updateTier();
+  $('#stateText').textContent = t(stateKey);
+  setHealth($('#health'), null);
+}
+refreshTexts();
+document.addEventListener('langchange', refreshTexts);
 </script>
 </body>
 </html>

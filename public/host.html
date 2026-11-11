@@ -3,142 +3,318 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScreenStream Host</title>
+<title>Host</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<div class="wrap">
-  <div class="row" style="margin-bottom:18px">
-    <div class="brand"><span class="dot"></span> ScreenStream · Host</div>
-    <div style="flex:0" class="row">
-      <span id="sigStatus" class="pill">Server</span>
-      <span id="agentStatus" class="pill" title="Remote-control helper on this PC">Control helper</span>
-    </div>
+<body class="host">
+<header class="topbar">
+  <a class="brand" href="/"><span class="logo"></span><span class="brand-name">ScreenStream</span><span class="tag" data-i18n="host_tag">Host</span></a>
+  <div class="top-right">
+    <span id="sigStatus" class="chip"><i class="dot"></i><span id="sigText" data-i18n="server">Server</span></span>
+    <span id="agentStatus" class="chip"><i class="dot"></i><span id="agentText"></span></span>
+    <button class="lang-toggle chip-btn">VI</button>
   </div>
+</header>
 
-  <div class="grid cols">
-    <!-- Settings -->
+<main class="host-grid">
+  <section class="col-main">
+    <div class="card stage-card">
+      <div class="preview-wrap">
+        <video id="preview" autoplay muted playsinline></video>
+        <div id="idle" class="preview-idle">
+          <div class="idle-icon" data-icon="screen"></div>
+          <h1 data-i18n="idle_title">Ready to go live</h1>
+          <p data-i18n="idle_sub"></p>
+          <button id="goLive" class="btn primary xl"><span data-icon="play"></span><span data-i18n="go_live">Go live</span></button>
+        </div>
+        <span id="liveBadge" class="live-badge hidden"><i></i><span data-i18n="live">LIVE</span></span>
+        <span id="tierBadge" class="tier-badge hidden"></span>
+        <div id="reactLayer" class="react-layer"></div>
+      </div>
+      <div class="stage-bar">
+        <button id="micBtn" class="icon-btn" disabled></button>
+        <button id="stopBtn" class="btn danger hidden"><span data-icon="stop"></span><span data-i18n="end_stream">End stream</span></button>
+        <div id="capInfo" class="cap-info muted"></div>
+      </div>
+      <div id="surfaceWarn" class="banner hidden" data-i18n="surface_warn"></div>
+    </div>
+
     <div class="card">
-      <h2>Stream settings</h2>
-      <label>Room code</label>
-      <input id="room" maxlength="32">
-      <label>Password (viewers need this)</label>
-      <input id="password" type="text" placeholder="Set a password">
-      <label>Quality</label>
-      <select id="quality">
-        <option value="1080p30">1080p · 30 fps</option>
-        <option value="1080p60" selected>1080p · 60 fps</option>
-        <option value="1440p60">1440p · 60 fps</option>
-        <option value="2160p30">4K · 30 fps</option>
-        <option value="native">Native screen resolution · 60 fps</option>
-      </select>
-      <label>Max bitrate</label>
-      <select id="bitrate">
-        <option value="4000000">4 Mbps (slow upload)</option>
-        <option value="8000000">8 Mbps</option>
-        <option value="12000000" selected>12 Mbps</option>
-        <option value="20000000">20 Mbps</option>
-        <option value="35000000">35 Mbps (4K / fast upload)</option>
-        <option value="50000000">50 Mbps (very fast upload)</option>
-      </select>
-      <label>Content type (can change while live)</label>
-      <select id="hint">
-        <option value="mixed" selected>Mixed (recommended)</option>
-        <option value="detail">Text / desktop work (sharpest)</option>
-        <option value="motion">Games / video (smoothest)</option>
-      </select>
-      <label>Video codec</label>
-      <select id="codec">
-        <option value="auto" selected>Auto (best for this PC)</option>
-        <option value="video/H264">H.264 (best hardware support)</option>
-        <option value="video/VP9">VP9</option>
-        <option value="video/AV1">AV1 (best quality, newer GPUs)</option>
-      </select>
-      <label style="display:flex;gap:8px;align-items:center;color:var(--text)">
-        <input id="sysAudio" type="checkbox" checked style="width:auto"> Share PC sound
-      </label>
-      <div class="row" style="margin-top:16px">
-        <button id="startBtn" class="primary">Start sharing</button>
-        <button id="stopBtn" class="danger hidden">Stop</button>
-      </div>
-      <div id="surfaceWarn" class="banner hidden">You are sharing a window or tab. For remote control, choose <b>Entire screen</b>.</div>
-    </div>
-
-    <!-- Live panel -->
-    <div class="grid">
-      <div class="card">
-        <div class="row" style="margin-bottom:10px">
-          <h2 style="margin:0">Preview</h2>
-          <div style="flex:0" class="row">
-            <button id="micBtn" class="small" disabled>Mic off</button>
-          </div>
-        </div>
-        <video id="preview" class="preview" autoplay muted playsinline></video>
-        <div id="capInfo" class="muted" style="margin-top:6px"></div>
-        <label>Viewer link</label>
-        <div class="linkbox">
-          <input id="link" readonly>
-          <button id="copyBtn" class="small" style="flex:0">Copy</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Viewers</h2>
-        <div id="viewers"><div class="muted">No one has joined yet.</div></div>
-        <div id="monitorRow" class="hidden">
-          <label>Monitor that viewers control</label>
-          <select id="monitor"></select>
-        </div>
+      <div class="card-head"><h2 data-i18n="viewers">Viewers</h2><span id="viewerCount" class="count">0</span></div>
+      <div id="viewers"></div>
+      <div id="monitorRow" class="hidden">
+        <label><span data-i18n="monitor_label"></span><select id="monitor"></select></label>
       </div>
     </div>
-  </div>
-</div>
+  </section>
+
+  <aside class="col-side">
+    <div class="card">
+      <div class="card-head"><h2 data-i18n="invite">Invite</h2></div>
+      <div class="field-row">
+        <label><span data-i18n="room_code">Room code</span><input id="room" maxlength="32" autocomplete="off"></label>
+        <label><span data-i18n="password">Password</span><input id="password" type="text" autocomplete="off" data-i18n-ph="password_ph"></label>
+      </div>
+      <div class="link-row">
+        <input id="link" readonly>
+        <button id="copyBtn" class="btn"><span data-icon="copy"></span><span data-i18n="copy">Copy</span></button>
+      </div>
+      <div class="qr-row">
+        <img id="qr" alt="QR">
+        <p class="muted" data-i18n="qr_hint"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2 data-i18n="quality">Quality</h2><span id="overallHealth" class="health hidden"></span></div>
+      <div class="presets">
+        <button class="preset" data-preset="auto"><span data-icon="auto"></span><b data-i18n="p_auto"></b><small data-i18n="p_auto_d"></small></button>
+        <button class="preset" data-preset="smooth"><span data-icon="game"></span><b data-i18n="p_smooth"></b><small data-i18n="p_smooth_d"></small></button>
+        <button class="preset" data-preset="balanced"><span data-icon="sliders"></span><b data-i18n="p_balanced"></b><small data-i18n="p_balanced_d"></small></button>
+        <button class="preset" data-preset="sharp"><span data-icon="text"></span><b data-i18n="p_sharp"></b><small data-i18n="p_sharp_d"></small></button>
+      </div>
+      <div id="tip" class="tip hidden"><span data-icon="info"></span><span id="tipText"></span></div>
+      <details class="adv">
+        <summary data-i18n="advanced">Advanced settings</summary>
+        <div class="adv-grid">
+          <label><span data-i18n="resolution"></span>
+            <select id="res">
+              <option value="native" data-i18n="native">Native</option>
+              <option value="2160">4K (2160p)</option>
+              <option value="1440">1440p</option>
+              <option value="1080" selected>1080p</option>
+              <option value="720">720p</option>
+            </select>
+          </label>
+          <label><span data-i18n="framerate"></span>
+            <select id="fps">
+              <option value="30">30 fps</option>
+              <option value="60" selected>60 fps</option>
+              <option value="120">120 fps</option>
+              <option value="144">144 fps</option>
+            </select>
+          </label>
+          <label><span data-i18n="bitrate"></span>
+            <select id="bitrate">
+              <option value="4000000">4 Mbps</option>
+              <option value="8000000">8 Mbps</option>
+              <option value="12000000" selected>12 Mbps</option>
+              <option value="16000000">16 Mbps</option>
+              <option value="20000000">20 Mbps</option>
+              <option value="35000000">35 Mbps</option>
+              <option value="50000000">50 Mbps</option>
+            </select>
+          </label>
+          <label><span data-i18n="content"></span>
+            <select id="hint">
+              <option value="mixed" data-i18n="c_mixed">Mixed</option>
+              <option value="detail" data-i18n="c_detail">Text / desktop</option>
+              <option value="motion" data-i18n="c_motion">Games / video</option>
+            </select>
+          </label>
+          <label class="full"><span data-i18n="codec"></span>
+            <select id="codec">
+              <option value="auto" data-i18n="codec_auto">Auto</option>
+              <option value="video/AV1">AV1</option>
+              <option value="video/H264">H.264</option>
+              <option value="video/VP9">VP9</option>
+            </select>
+          </label>
+          <label class="check full"><input id="sysAudio" type="checkbox" checked><span data-i18n="pc_sound" style="margin:0">Share PC sound</span></label>
+        </div>
+        <p class="note" data-i18n="fps_note"></p>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2 data-i18n="chat">Chat</h2></div>
+      <div id="chatList" class="chat-list"><div class="empty" data-i18n="chat_empty">No messages yet.</div></div>
+      <div id="reactRow" class="react-row"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" maxlength="300" autocomplete="off" data-i18n-ph="chat_ph">
+        <button class="icon-btn" data-i18n-title="send"><span data-icon="send"></span></button>
+      </form>
+    </div>
+  </aside>
+</main>
 
 <script src="/common.js"></script>
 <script>
-const PRESETS = {
-  '1080p30': { w: 1920, h: 1080, fps: 30 },
-  '1080p60': { w: 1920, h: 1080, fps: 60 },
-  '1440p60': { w: 2560, h: 1440, fps: 60 },
-  '2160p30': { w: 3840, h: 2160, fps: 30 },
-  'native':  { w: 0, h: 0, fps: 60 },
-};
-const AGENT_URL = 'ws://127.0.0.1:8765';
+initPage('host_tag');
 
-let iceServers, signal, screenStream, micStream, micOn = false;
-let codecInfo = { mime: 'auto', hw: false };
+const AGENT_URL = 'ws://127.0.0.1:8765';
 const HINTS = {
   mixed:  { hint: '',       degrade: 'balanced' },
   detail: { hint: 'detail', degrade: 'maintain-resolution' },
   motion: { hint: 'motion', degrade: 'maintain-framerate' },
 };
-const hintOf = () => HINTS[$('#hint').value] || HINTS.mixed;
-const peers = new Map(); // id -> { pc, dc, name, control: 'none'|'pending'|'on', audioEl, stats }
+const PRESETS = {
+  auto:     { auto: true },
+  smooth:   { res: '1080',   fps: 60, bitrate: 12e6, hint: 'motion' },
+  balanced: { res: '1080',   fps: 60, bitrate: 12e6, hint: 'mixed' },
+  sharp:    { res: 'native', fps: 30, bitrate: 16e6, hint: 'detail' },
+};
+// Auto-quality ladder (best first). Bitrates are what each step needs to look good.
+const TIERS = [
+  { id: '2160p60', h: 2160, fps: 60, bps: 40e6 },
+  { id: '2160p30', h: 2160, fps: 30, bps: 28e6 },
+  { id: '1440p60', h: 1440, fps: 60, bps: 20e6 },
+  { id: '1080p60', h: 1080, fps: 60, bps: 12e6 },
+  { id: '1080p30', h: 1080, fps: 30, bps: 7e6 },
+  { id: '720p30',  h: 720,  fps: 30, bps: 3.5e6 },
+];
 
-// --- Settings memory ---
-const saved = (() => { try { return JSON.parse(localStorage.getItem('ss-host2') || '{}'); } catch { return {}; } })();
+let iceServers, signal, screenStream, micStream, micOn = false;
+let codecInfo = { mime: 'auto', hw: null };
+let native = { w: 1920, h: 1080 };
+let preset = 'auto';
+let tiers = [], tierIdx = 0;
+const auto = { bad: 0, good: 0, cooldown: {} };
+const peers = new Map(); // id -> { pc, dc, name, control, audioEl, last, stats, health }
+let tipOverride = null;
+
+// ---------------------------------------------------------------- settings
+const saved = (() => { try { return JSON.parse(localStorage.getItem('ss-host3') || '{}'); } catch { return {}; } })();
 $('#room').value = saved.room || Math.random().toString(36).slice(2, 8).toUpperCase();
 $('#password').value = saved.password || '';
-for (const k of ['quality', 'bitrate', 'hint', 'codec']) if (saved[k]) $('#' + k).value = saved[k];
+for (const k of ['res', 'fps', 'bitrate', 'hint', 'codec']) if (saved[k]) $('#' + k).value = saved[k];
+if (saved.sysAudio === false) $('#sysAudio').checked = false;
 function saveSettings() {
   try {
-    localStorage.setItem('ss-host2', JSON.stringify({
-      room: $('#room').value, password: $('#password').value,
-      quality: $('#quality').value, bitrate: $('#bitrate').value, hint: $('#hint').value, codec: $('#codec').value,
+    localStorage.setItem('ss-host3', JSON.stringify({
+      room: $('#room').value, password: $('#password').value, preset,
+      res: $('#res').value, fps: $('#fps').value, bitrate: $('#bitrate').value, hint: $('#hint').value,
+      codec: $('#codec').value, sysAudio: $('#sysAudio').checked,
     }));
   } catch {}
 }
 
+// ---------------------------------------------------------------- invite
 function updateLink() {
-  $('#link').value = `${location.origin}/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`;
+  const link = `${location.origin}/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`;
+  $('#link').value = link;
+  $('#qr').src = '/qr.svg?d=' + encodeURIComponent(link);
 }
-$('#room').addEventListener('input', updateLink);
+$('#room').addEventListener('input', () => { updateLink(); saveSettings(); });
+$('#password').addEventListener('input', saveSettings);
 updateLink();
 $('#copyBtn').onclick = async () => {
-  try { await navigator.clipboard.writeText($('#link').value); toast('Link copied', 'ok'); } catch { $('#link').select(); }
+  try { await navigator.clipboard.writeText($('#link').value); toast(t('copied'), 'ok'); } catch { $('#link').select(); }
 };
 
-// --- Remote-control helper (runs on this PC) ---
+// ---------------------------------------------------------------- quality
+function selectPreset(name) {
+  preset = name;
+  $$('.preset').forEach((b) => b.classList.toggle('active', b.dataset.preset === name));
+  const p = PRESETS[name];
+  if (p && !p.auto) {
+    $('#res').value = p.res; $('#fps').value = String(p.fps);
+    $('#bitrate').value = String(p.bitrate); $('#hint').value = p.hint;
+  }
+  saveSettings();
+  if (screenStream) { if (p && p.auto) initTiers(); applyQuality(); }
+}
+$$('.preset').forEach((b) => { b.onclick = () => selectPreset(b.dataset.preset); });
+for (const id of ['res', 'fps', 'bitrate', 'hint']) {
+  $('#' + id).addEventListener('change', () => {
+    preset = 'custom';
+    $$('.preset').forEach((b) => b.classList.remove('active'));
+    saveSettings();
+    if (screenStream) applyQuality();
+  });
+}
+$('#codec').addEventListener('change', saveSettings);
+$('#sysAudio').addEventListener('change', saveSettings);
+selectPreset(saved.preset && (PRESETS[saved.preset] || saved.preset === 'custom') ? saved.preset : 'auto');
+if (preset === 'custom') $$('.preset').forEach((b) => b.classList.remove('active'));
+
+function initTiers() {
+  tiers = TIERS.filter((tr) => tr.h <= Math.max(native.h, 1080));
+  tierIdx = Math.max(0, tiers.findIndex((tr) => tr.id === '1080p60'));
+  auto.bad = auto.good = 0;
+}
+function target() {
+  if (preset === 'auto' && tiers.length) {
+    const tr = tiers[tierIdx];
+    return { h: tr.h, fps: tr.fps, bps: tr.bps, hint: 'mixed', label: `${Math.min(tr.h, native.h)}p${tr.fps}` };
+  }
+  const res = $('#res').value;
+  const h = res === 'native' ? native.h : Number(res);
+  const fps = Number($('#fps').value);
+  return { h, fps, bps: Number($('#bitrate').value), hint: $('#hint').value, label: `${Math.min(h, native.h)}p${fps}` };
+}
+async function applyQuality() {
+  if (!screenStream) return;
+  const tg = target();
+  const vt = screenStream.getVideoTracks()[0];
+  const h = Math.min(tg.h, native.h);
+  const w = Math.round((h * native.w) / native.h);
+  try { await vt.applyConstraints({ width: { max: w }, height: { max: h }, frameRate: { ideal: tg.fps, max: tg.fps } }); }
+  catch (e) { console.warn('applyConstraints', e); }
+  vt.contentHint = HINTS[tg.hint].hint;
+  for (const p of peers.values()) applyEncoding(p, tg);
+  if (preset === 'auto') {
+    $('#res').value = tg.h >= native.h ? 'native' : String(tg.h);
+    $('#fps').value = String(tg.fps); $('#bitrate').value = String(nearestBitrate(tg.bps)); $('#hint').value = 'mixed';
+  }
+  updateTierBadge();
+  broadcastQuality();
+  showCaptureInfo();
+}
+function nearestBitrate(bps) {
+  const opts = [...$('#bitrate').options].map((o) => Number(o.value));
+  return opts.reduce((a, b) => (Math.abs(b - bps) < Math.abs(a - bps) ? b : a));
+}
+function updateTierBadge() {
+  const b = $('#tierBadge');
+  if (!screenStream) { b.classList.add('hidden'); return; }
+  b.textContent = target().label + (preset === 'auto' ? ` · ${t('p_auto')}` : '');
+  b.classList.remove('hidden');
+}
+async function applyEncoding(peer, tg = target()) {
+  const sender = peer.pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+  if (!sender) return;
+  const params = sender.getParameters();
+  if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+  Object.assign(params.encodings[0], {
+    maxBitrate: tg.bps, maxFramerate: tg.fps, scaleResolutionDownBy: 1, priority: 'high', networkPriority: 'high',
+  });
+  params.degradationPreference = HINTS[tg.hint].degrade;
+  try { await sender.setParameters(params); } catch (e) { console.warn('setParameters', e); }
+}
+
+// Auto: step down after ~6 s of struggling, step up after ~16 s of headroom.
+function autoStep(bad, good) {
+  if (preset !== 'auto' || !tiers.length) return;
+  if (bad) { auto.bad++; auto.good = 0; } else { auto.bad = 0; auto.good = good ? auto.good + 1 : 0; }
+  const now = Date.now();
+  if (auto.bad >= 3 && tierIdx < tiers.length - 1) {
+    auto.cooldown[tiers[tierIdx].id] = now + 60000;
+    tierIdx++; auto.bad = 0;
+    showTip('tip_auto_down', { tier: tiers[tierIdx].id });
+    applyQuality();
+  } else if (auto.good >= 8 && tierIdx > 0 && (auto.cooldown[tiers[tierIdx - 1].id] || 0) < now) {
+    tierIdx--; auto.good = 0;
+    showTip('tip_auto_up', { tier: tiers[tierIdx].id });
+    applyQuality();
+  }
+}
+function showTip(key, vars) {
+  tipOverride = { key, vars, until: Date.now() + 8000 };
+  renderTip();
+}
+function renderTip(worstTip) {
+  let key = worstTip, vars = {};
+  if (tipOverride && tipOverride.until > Date.now()) { key = tipOverride.key; vars = tipOverride.vars; }
+  $('#tip').classList.toggle('hidden', !key);
+  if (key) $('#tipText').textContent = t(key, vars);
+}
+
+// ---------------------------------------------------------------- control helper (agent.py)
 let agent = null, agentOk = false;
 function connectAgent() {
   try { agent = new WebSocket(AGENT_URL); } catch { return setTimeout(connectAgent, 3000); }
@@ -147,7 +323,7 @@ function connectAgent() {
     const msg = JSON.parse(e.data);
     if (msg.t === 'monitors') {
       const sel = $('#monitor');
-      sel.innerHTML = msg.list.map((m) => `<option value="${m.i}" ${m.primary ? 'selected' : ''}>Monitor ${m.i}: ${m.w}×${m.h}${m.primary ? ' (main)' : ''}</option>`).join('');
+      sel.innerHTML = msg.list.map((m) => `<option value="${m.i}" ${m.primary ? 'selected' : ''}>#${m.i} · ${m.w}×${m.h}${m.primary ? ' ★' : ''}</option>`).join('');
       $('#monitorRow').classList.toggle('hidden', msg.list.length < 2);
       sendAgent({ t: 'monitor', i: Number(sel.value) });
     }
@@ -155,7 +331,6 @@ function connectAgent() {
   agent.onclose = () => {
     if (agentOk) broadcast({ t: 'agent', ok: false });
     agentOk = false; setAgentStatus();
-    // Release anything that might be held
     setTimeout(connectAgent, 3000);
   };
   agent.onerror = () => {};
@@ -163,72 +338,69 @@ function connectAgent() {
 function sendAgent(msg) { if (agentOk && agent.readyState === 1) agent.send(JSON.stringify(msg)); }
 function setAgentStatus() {
   const el = $('#agentStatus');
-  el.className = 'pill ' + (agentOk ? 'ok' : 'warn');
-  el.textContent = agentOk ? 'Control helper on' : 'Control helper off';
-  el.title = agentOk ? 'Viewers can control this PC if you allow them' : 'Run start-agent.bat on this PC to allow remote control';
+  el.className = 'chip ' + (agentOk ? 'ok' : 'warn');
+  $('#agentText').textContent = t(agentOk ? 'agent_on' : 'agent_off');
+  el.title = t(agentOk ? 'agent_on_t' : 'agent_off_t');
 }
 $('#monitor').onchange = () => sendAgent({ t: 'monitor', i: Number($('#monitor').value) });
 setAgentStatus();
 connectAgent();
 
-// --- Start / stop ---
-$('#startBtn').onclick = start;
+// ---------------------------------------------------------------- go live / stop
+$('#goLive').onclick = start;
 $('#stopBtn').onclick = stop;
 
 async function start() {
   const room = $('#room').value.trim().toUpperCase();
-  if (!/^[A-Z0-9-]{3,32}$/.test(room)) return toast('Room code: 3-32 letters or numbers', 'bad');
-  if (!$('#password').value) return toast('Please set a password', 'bad');
+  if (!/^[A-Z0-9-]{3,32}$/.test(room)) { $('#room').focus(); return toast(t('bad_room'), 'bad'); }
+  if (!$('#password').value) { $('#password').focus(); return toast(t('need_password'), 'bad'); }
   saveSettings();
 
-  const p = PRESETS[$('#quality').value];
-  const video = { frameRate: { ideal: p.fps, max: p.fps }, cursor: 'always' };
-  if (p.w) { video.width = { ideal: p.w, max: p.w }; video.height = { ideal: p.h, max: p.h }; }
+  const wantFps = preset === 'auto' ? 60 : Number($('#fps').value);
+  const sys = $('#sysAudio').checked;
   try {
     screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video,
-      audio: $('#sysAudio').checked ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, restrictOwnAudio: true } : false,
-      systemAudio: $('#sysAudio').checked ? 'include' : 'exclude',
-      surfaceSwitching: 'include',
-      selfBrowserSurface: 'exclude',
-      monitorTypeSurfaces: 'include',
+      video: { width: { max: 3840 }, height: { max: 2160 }, frameRate: { ideal: wantFps, max: Math.max(wantFps, 60) } },
+      audio: sys ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2, restrictOwnAudio: true } : false,
+      systemAudio: sys ? 'include' : 'exclude',
+      surfaceSwitching: 'include', selfBrowserSurface: 'exclude', monitorTypeSurfaces: 'include',
     });
-  } catch (e) {
-    return toast('Screen sharing was cancelled', 'bad');
-  }
+  } catch { return toast(t('share_cancelled'), 'bad'); }
+
   const vt = screenStream.getVideoTracks()[0];
-  vt.contentHint = hintOf().hint;
   vt.addEventListener('ended', stop);
+  const s = vt.getSettings();
+  native = { w: s.width || 1920, h: s.height || 1080 };
   $('#preview').srcObject = screenStream;
 
-  // Choose the codec (hardware encoder if the PC has one)
-  const cs = vt.getSettings();
-  if ($('#codec').value === 'auto') {
-    codecInfo = await pickBestCodec(cs.width || 1920, cs.height || 1080, p.fps, Number($('#bitrate').value));
-  } else {
-    codecInfo = { mime: $('#codec').value, hw: null };
-  }
-  showCaptureInfo();
+  codecInfo = $('#codec').value === 'auto'
+    ? await pickBestCodec(native.w, native.h, 60, 12e6)
+    : { mime: $('#codec').value, hw: null };
 
-  // Microphone (optional – keep going without it)
+  initTiers();
+  await applyQuality();
+
   try {
     micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     setMic(true);
     $('#micBtn').disabled = false;
-  } catch { toast('No microphone access – voice from you is off'); }
+  } catch { toast(t('no_mic')); }
 
   iceServers = await getIceServers();
-  signal = new Signal(onSignal, (s) => {
-    $('#sigStatus').className = 'pill ' + (s === 'online' ? 'ok' : 'bad');
-    $('#sigStatus').textContent = s === 'online' ? 'Server connected' : 'Server offline';
-    if (s === 'offline' && screenStream) setTimeout(reconnectSignal, 2000);
+  signal = new Signal(onSignal, (st) => {
+    $('#sigStatus').className = 'chip ' + (st === 'online' ? 'ok' : 'bad');
+    $('#sigText').textContent = t(st === 'online' ? 'server_on' : 'server_off');
+    if (st === 'offline' && screenStream) setTimeout(reconnectSignal, 2000);
   });
   try { await signal.connect(); } catch (e) { toast(e.message, 'bad'); stop(); return; }
   signal.send({ type: 'create', room, password: $('#password').value });
 
-  $('#startBtn').classList.add('hidden');
+  $('#idle').classList.add('hidden');
+  $('#liveBadge').classList.remove('hidden');
   $('#stopBtn').classList.remove('hidden');
-  for (const id of ['room', 'password', 'quality', 'codec', 'sysAudio']) $('#' + id).disabled = true;
+  $('#overallHealth').classList.remove('hidden');
+  setHealth($('#overallHealth'), null);
+  for (const id of ['room', 'password', 'codec', 'sysAudio']) $('#' + id).disabled = true;
 }
 
 async function reconnectSignal() {
@@ -240,51 +412,48 @@ async function reconnectSignal() {
 }
 
 function stop() {
-  for (const id of [...peers.keys()]) closePeer(id);
-  screenStream?.getTracks().forEach((t) => t.stop());
-  micStream?.getTracks().forEach((t) => t.stop());
+  for (const id of [...peers.keys()]) closePeer(id, true);
+  screenStream?.getTracks().forEach((tr) => tr.stop());
+  micStream?.getTracks().forEach((tr) => tr.stop());
   screenStream = micStream = null;
   if (signal?.ws) { signal.ws.onclose = null; signal.ws.close(); }
-  $('#sigStatus').className = 'pill'; $('#sigStatus').textContent = 'Server';
+  $('#sigStatus').className = 'chip'; $('#sigText').textContent = t('server');
   $('#preview').srcObject = null;
   $('#capInfo').textContent = '';
-  $('#surfaceWarn').classList.add('hidden');
-  $('#startBtn').classList.remove('hidden');
-  $('#stopBtn').classList.add('hidden');
+  for (const id of ['surfaceWarn', 'liveBadge', 'stopBtn', 'tierBadge', 'overallHealth', 'tip']) $('#' + id).classList.add('hidden');
+  $('#idle').classList.remove('hidden');
   $('#micBtn').disabled = true; setMic(false);
-  for (const id of ['room', 'password', 'quality', 'codec', 'sysAudio']) $('#' + id).disabled = false;
+  for (const id of ['room', 'password', 'codec', 'sysAudio']) $('#' + id).disabled = false;
   renderViewers();
 }
 
 function showCaptureInfo() {
+  if (!screenStream) return;
   const s = screenStream.getVideoTracks()[0].getSettings();
-  const audio = screenStream.getAudioTracks().length ? 'PC sound on' : 'no PC sound';
-  const codec = codecInfo.mime.split('/')[1] + (codecInfo.hw === true ? ' (graphics card)' : codecInfo.hw === false ? ' (CPU – no hardware encoder found)' : '');
-  $('#capInfo').textContent = `Capturing ${s.width}×${s.height} @ ${Math.round(s.frameRate || 0)} fps · ${s.displaySurface || 'screen'} · ${audio} · ${codec}`;
+  const codec = codecInfo.mime === 'auto' ? '' : codecInfo.mime.split('/')[1] +
+    (codecInfo.hw === true ? ` (${t('gpu')})` : codecInfo.hw === false ? ` (${t('cpu')})` : '');
+  $('#capInfo').textContent = t('cap_info', {
+    w: s.width, h: s.height,
+    sound: t(screenStream.getAudioTracks().length ? 'sound_on' : 'sound_off'), codec,
+  });
   $('#surfaceWarn').classList.toggle('hidden', !s.displaySurface || s.displaySurface === 'monitor');
 }
 
-// --- Mic ---
+// ---------------------------------------------------------------- mic
 function setMic(on) {
   micOn = on && !!micStream;
-  micStream?.getAudioTracks().forEach((t) => (t.enabled = micOn));
-  $('#micBtn').textContent = micOn ? 'Mic on' : 'Mic off';
-  $('#micBtn').classList.toggle('on', micOn);
+  micStream?.getAudioTracks().forEach((tr) => (tr.enabled = micOn));
+  const b = $('#micBtn');
+  b.innerHTML = icon(micOn ? 'mic' : 'micOff');
+  b.classList.toggle('on', micOn); b.classList.toggle('off', !micOn && !b.disabled);
+  b.title = t(micOn ? 'mic_on' : 'mic_off');
 }
 $('#micBtn').onclick = () => setMic(!micOn);
+setMic(false);
 
-// --- Live bitrate / content changes ---
-$('#bitrate').onchange = () => { saveSettings(); for (const p of peers.values()) applyEncoding(p); };
-$('#hint').onchange = () => {
-  saveSettings();
-  const vt = screenStream?.getVideoTracks()[0];
-  if (vt) vt.contentHint = hintOf().hint;
-  for (const p of peers.values()) applyEncoding(p);
-};
-
-// --- Signaling ---
+// ---------------------------------------------------------------- signaling + peers
 function onSignal(msg) {
-  if (msg.type === 'created') toast(`Live in room ${msg.room}`, 'ok');
+  if (msg.type === 'created') toast(t('live_in', { room: msg.room }), 'ok');
   else if (msg.type === 'error') { toast(msg.message, 'bad'); if (!peers.size) stop(); }
   else if (msg.type === 'viewer-joined') createPeer(msg.id, msg.name);
   else if (msg.type === 'viewer-left') closePeer(msg.id);
@@ -292,14 +461,13 @@ function onSignal(msg) {
 }
 
 async function createPeer(id, name) {
-  if (peers.has(id)) closePeer(id);
+  if (peers.has(id)) closePeer(id, true);
   const pc = new RTCPeerConnection({ iceServers });
-  const peer = { pc, name, control: 'none', dc: null, audioEl: null, last: null, statsText: 'connecting…' };
+  const peer = { pc, name, control: 'none', dc: null, audioEl: null, last: null, stats: null, health: null };
   peers.set(id, peer);
 
-  // Fixed transceiver order: 0 = screen video, 1 = PC sound, 2 = voice (two-way)
-  const vt = screenStream.getVideoTracks()[0];
-  const vtx = pc.addTransceiver(vt, { direction: 'sendonly', streams: [screenStream] });
+  // Fixed order: mid 0 = screen video, mid 1 = PC sound, mid 2 = voice (two-way)
+  const vtx = pc.addTransceiver(screenStream.getVideoTracks()[0], { direction: 'sendonly', streams: [screenStream] });
   preferCodec(vtx, codecInfo.mime);
   pc.addTransceiver(screenStream.getAudioTracks()[0] || 'audio', { direction: 'sendonly' });
   pc.addTransceiver(micStream?.getAudioTracks()[0] || 'audio', { direction: 'sendrecv' });
@@ -315,20 +483,21 @@ async function createPeer(id, name) {
   pc.onicecandidate = (e) => e.candidate && signal.send({ type: 'signal', to: id, data: { candidate: e.candidate } });
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') applyEncoding(peer);
-    if (pc.connectionState === 'failed') toast(`${name}: connection failed (a TURN server may be needed, see README)`, 'bad');
+    if (pc.connectionState === 'failed') toast(t('conn_failed', { name }), 'bad');
     renderViewers();
   };
 
   const dc = pc.createDataChannel('control', { ordered: true });
   peer.dc = dc;
-  dc.onopen = () => dcSend(peer, { t: 'agent', ok: agentOk });
-  dc.onmessage = (e) => onControlMessage(id, JSON.parse(e.data));
+  dc.onopen = () => { dcSend(peer, { t: 'agent', ok: agentOk }); sendQuality(peer); };
+  dc.onmessage = (e) => { try { onPeerMessage(id, JSON.parse(e.data)); } catch {} };
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   signal.send({ type: 'signal', to: id, data: { sdp: pc.localDescription } });
   renderViewers();
-  toast(`${name} joined`);
+  toast(t('viewer_joined', { name }));
+  sysLine('joined', name);
 }
 
 async function handleRemoteSignal(id, data) {
@@ -336,61 +505,75 @@ async function handleRemoteSignal(id, data) {
   if (!peer) return;
   try {
     if (data.sdp) {
-      const sdp = data.sdp.type === 'answer' ? boostBitrate(data.sdp.sdp, Number($('#bitrate').value)) : data.sdp.sdp;
+      const sdp = data.sdp.type === 'answer' ? tuneAnswer(data.sdp.sdp, Math.round((target().bps * 0.6) / 1000)) : data.sdp.sdp;
       await peer.pc.setRemoteDescription({ type: data.sdp.type, sdp });
-    }
-    else if (data.candidate) await peer.pc.addIceCandidate(data.candidate);
+    } else if (data.candidate) await peer.pc.addIceCandidate(data.candidate);
   } catch (e) { console.warn(e); }
 }
 
-async function applyEncoding(peer) {
-  const sender = peer.pc.getSenders().find((s) => s.track && s.track.kind === 'video');
-  if (!sender) return;
-  const params = sender.getParameters();
-  if (!params.encodings || !params.encodings.length) params.encodings = [{}];
-  const p = PRESETS[$('#quality').value];
-  params.encodings[0].maxBitrate = Number($('#bitrate').value);
-  params.encodings[0].maxFramerate = p.fps;
-  params.encodings[0].scaleResolutionDownBy = 1;
-  params.encodings[0].priority = 'high';
-  params.encodings[0].networkPriority = 'high';
-  params.degradationPreference = hintOf().degrade;
-  try { await sender.setParameters(params); } catch (e) { console.warn('setParameters', e); }
-}
-
-function closePeer(id) {
+function closePeer(id, silent) {
   const peer = peers.get(id);
   if (!peer) return;
   if (peer.control === 'on') sendAgent({ t: 'release' });
   peer.pc.close();
   peer.audioEl?.pause();
   peers.delete(id);
+  if (!silent) sysLine('left', peer.name);
   renderViewers();
 }
 
-// --- Remote control ---
+// ---------------------------------------------------------------- data channel (control, chat, reactions)
 function dcSend(peer, msg) { if (peer.dc?.readyState === 'open') peer.dc.send(JSON.stringify(msg)); }
 function broadcast(msg) { for (const p of peers.values()) dcSend(p, msg); }
+function relay(fromId, msg) { for (const [id, p] of peers) if (id !== fromId) dcSend(p, msg); }
+function sendQuality(p) {
+  if (!screenStream) return;
+  const tg = target();
+  dcSend(p, { t: 'q', label: tg.label, auto: preset === 'auto', fps: tg.fps, level: p.health?.level || null, tip: p.health?.tip || null });
+}
+function broadcastQuality() { for (const p of peers.values()) sendQuality(p); }
+function sysLine(key, name) {
+  addChatLine($('#chatList'), { sys: true, text: t(key, { name }) });
+  broadcast({ t: 'sys', key, name });
+}
 
-function onControlMessage(id, msg) {
+function onPeerMessage(id, msg) {
   const peer = peers.get(id);
   if (!peer) return;
-  if (msg.t === 'req') {
-    if (peer.control === 'on') return;
-    peer.control = 'pending';
-    renderViewers();
-    toast(`${peer.name} is asking to control your PC`);
-    return;
+  const now = Date.now();
+  switch (msg.t) {
+    case 'req':
+      if (peer.control === 'on') return;
+      peer.control = 'pending';
+      renderViewers();
+      toast(t('wants_control_toast', { name: peer.name }));
+      return;
+    case 'stop':
+      setControl(id, false);
+      return;
+    case 'chat': {
+      if (now - (peer.lastChat || 0) < 300) return;
+      peer.lastChat = now;
+      const text = String(msg.text || '').trim().slice(0, 300);
+      if (!text) return;
+      addChatLine($('#chatList'), { name: peer.name, text });
+      relay(id, { t: 'chat', name: peer.name, text });
+      return;
+    }
+    case 'react':
+      if (!REACTIONS.includes(msg.e) || now - (peer.lastReact || 0) < 150) return;
+      peer.lastReact = now;
+      spawnReaction($('#reactLayer'), msg.e);
+      relay(id, { t: 'react', e: msg.e });
+      return;
+    default:
+      if (peer.control === 'on' && ['m', 'd', 'u', 'w', 'kd', 'ku', 'release'].includes(msg.t)) sendAgent(msg);
   }
-  if (msg.t === 'stop') { setControl(id, false); return; }
-  // Input events: forward only if this viewer is allowed
-  if (peer.control === 'on' && ['m', 'd', 'u', 'w', 'kd', 'ku', 'release'].includes(msg.t)) sendAgent(msg);
 }
 
 function setControl(id, allow) {
   const peer = peers.get(id);
   if (!peer) return;
-  // Only one controller at a time
   if (allow) for (const [oid, o] of peers) if (oid !== id && o.control === 'on') setControl(oid, false);
   if (!allow && peer.control === 'on') sendAgent({ t: 'release' });
   peer.control = allow ? 'on' : 'none';
@@ -398,61 +581,136 @@ function setControl(id, allow) {
   renderViewers();
 }
 
+// ---------------------------------------------------------------- chat + reactions (host side)
+buildReactionButtons($('#reactRow'), (e) => { spawnReaction($('#reactLayer'), e); broadcast({ t: 'react', e }); });
+$('#chatForm').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('#chatInput').value.trim().slice(0, 300);
+  if (!text) return;
+  $('#chatInput').value = '';
+  addChatLine($('#chatList'), { name: t('you'), text, self: true });
+  broadcast({ t: 'chat', host: true, text });
+};
+
+// ---------------------------------------------------------------- viewer list
 function renderViewers() {
   const box = $('#viewers');
-  if (!peers.size) { box.innerHTML = '<div class="muted">No one has joined yet.</div>'; return; }
+  $('#viewerCount').textContent = peers.size;
+  if (!peers.size) { box.innerHTML = `<div class="empty-state">${t('no_viewers')}</div>`; return; }
   box.innerHTML = '';
   for (const [id, p] of peers) {
     const row = document.createElement('div');
-    row.className = 'viewer';
-    const st = p.pc.connectionState;
-    const cls = st === 'connected' ? 'ok' : st === 'failed' ? 'bad' : 'warn';
-    row.innerHTML = `<div><b></b> <span class="pill ${cls}">${st}</span><div class="stats" data-stats="${id}">${p.statsText}</div></div><div class="row" style="flex:0"></div>`;
-    row.querySelector('b').textContent = p.name;
-    const actions = row.querySelector('.row');
-    const btn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'small ' + cls; b.textContent = label; b.onclick = fn; actions.appendChild(b); };
-    if (p.control === 'pending') {
-      btn('Allow control', 'primary', () => {
-        if (!agentOk) toast('Start the control helper (start-agent.bat) first', 'bad');
-        setControl(id, true);
-      });
-      btn('Deny', '', () => setControl(id, false));
-    } else if (p.control === 'on') {
-      btn('Take back control', 'danger', () => setControl(id, false));
+    row.className = 'viewer-row';
+    row.dataset.id = id;
+    row.innerHTML = `<div class="avatar"></div>
+      <div><div class="name"><span class="nm"></span><span class="health" data-h></span></div>
+      <div class="meta" data-meta></div><div class="vtip" data-tip></div></div>
+      <div class="actions"></div>`;
+    row.querySelector('.avatar').textContent = (p.name || '?').trim().charAt(0).toUpperCase();
+    row.querySelector('.nm').textContent = p.name;
+    if (p.control !== 'none') {
+      const pill = document.createElement('span');
+      pill.className = 'pill-ctl';
+      pill.textContent = t(p.control === 'on' ? 'controlling' : 'wants_control');
+      row.querySelector('.name').appendChild(pill);
     }
-    btn('Kick', 'danger', () => closePeer(id));
+    const actions = row.querySelector('.actions');
+    const btn = (label, cls, fn) => {
+      const b = document.createElement('button');
+      b.className = 'btn sm ' + cls; b.textContent = label; b.onclick = fn; actions.appendChild(b);
+    };
+    if (p.control === 'pending') {
+      btn(t('allow'), 'primary', () => { if (!agentOk) toast(t('start_helper_first'), 'bad'); setControl(id, true); });
+      btn(t('deny'), '', () => setControl(id, false));
+    } else if (p.control === 'on') {
+      btn(t('take_back'), 'danger', () => setControl(id, false));
+    }
+    btn(t('kick'), 'danger', () => closePeer(id));
     box.appendChild(row);
+    updateViewerRow(id);
   }
 }
+function updateViewerRow(id) {
+  const p = peers.get(id);
+  const row = document.querySelector(`.viewer-row[data-id="${id}"]`);
+  if (!p || !row) return;
+  const st = p.pc.connectionState;
+  const meta = row.querySelector('[data-meta]');
+  if (st !== 'connected' || !p.stats) meta.textContent = st === 'connected' ? t('h_wait') : st;
+  else {
+    const s = p.stats;
+    meta.textContent = [
+      `${s.w || '?'}×${s.h || '?'}`, `${Math.round(s.fps || 0)} fps`, fmtBitrate(s.bps),
+      `${s.codec}${s.gpu === true ? ' GPU' : s.gpu === false ? ' CPU' : ''}`,
+      s.abps ? `🔊 ${Math.round(s.abps / 1000)}k` : null,
+      `${Math.round(s.rtt)} ms`, s.relay ? 'TURN' : null,
+    ].filter(Boolean).join(' · ');
+  }
+  setHealth(row.querySelector('[data-h]'), st === 'failed' ? 'bad' : p.health?.level, p.health?.tip);
+  row.querySelector('[data-tip]').textContent = p.health?.tip ? t(p.health.tip) : '';
+}
 
-// --- Stats every 2s ---
+// ---------------------------------------------------------------- stats, health and auto quality (every 2 s)
+const RANK = { good: 0, ok: 1, bad: 2 };
 setInterval(async () => {
+  let any = false, bad = false, good = true, worst = null;
+  const need = screenStream ? target().bps : 0;
   for (const [id, p] of peers) {
     if (p.pc.connectionState !== 'connected') continue;
-    const stats = await p.pc.getStats();
-    let out, rtt, route = '';
-    stats.forEach((r) => {
+    const st = await p.pc.getStats();
+    let out, aout, rin, pair;
+    st.forEach((r) => {
       if (r.type === 'outbound-rtp' && r.kind === 'video') out = r;
-      if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') {
-        rtt = r.currentRoundTripTime;
-        const local = stats.get(r.localCandidateId);
-        route = local?.candidateType === 'relay' ? ' · via TURN' : '';
-      }
+      if (r.type === 'outbound-rtp' && r.kind === 'audio' && r.mid === '1') aout = r;
+      if (r.type === 'remote-inbound-rtp' && r.kind === 'video') rin = r;
+      if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r;
     });
     if (!out) continue;
-    let bps = 0;
-    if (p.last) bps = ((out.bytesSent - p.last.bytes) * 8) / ((out.timestamp - p.last.ts) / 1000);
-    p.last = { bytes: out.bytesSent, ts: out.timestamp };
-    const enc = out.powerEfficientEncoder === true ? ' GPU' : out.powerEfficientEncoder === false ? ' CPU' : '';
-    const codec = (stats.get(out.codecId)?.mimeType?.split('/')[1] || '') + enc;
-    const limit = out.qualityLimitationReason && out.qualityLimitationReason !== 'none' ? ` · limited by ${out.qualityLimitationReason}` : '';
-    p.statsText = `${out.frameWidth || '?'}×${out.frameHeight || '?'} @ ${Math.round(out.framesPerSecond || 0)} fps · ${fmtBitrate(bps)} · ${codec}${rtt != null ? ` · ${Math.round(rtt * 1000)} ms` : ''}${route}${limit}`;
-    const el = document.querySelector(`[data-stats="${id}"]`);
-    if (el) el.textContent = p.statsText;
+    any = true;
+    const bps = p.last ? ((out.bytesSent - p.last.b) * 8) / ((out.timestamp - p.last.t) / 1000) : 0;
+    const abps = aout && p.lastA ? ((aout.bytesSent - p.lastA.b) * 8) / ((aout.timestamp - p.lastA.t) / 1000) : 0;
+    p.last = { b: out.bytesSent, t: out.timestamp };
+    if (aout) p.lastA = { b: aout.bytesSent, t: aout.timestamp };
+    const rtt = pair?.currentRoundTripTime != null ? pair.currentRoundTripTime * 1000 : (rin?.roundTripTime || 0) * 1000;
+    const loss = rin?.fractionLost || 0;
+    const lim = out.qualityLimitationReason || 'none';
+    const avail = pair?.availableOutgoingBitrate || 0;
+
+    let level = 'good', tip = null;
+    if (lim === 'cpu') { level = 'ok'; tip = 'tip_cpu'; }
+    if (lim === 'bandwidth') { level = 'ok'; tip = 'tip_bw'; }
+    if (rtt > 150) { level = 'ok'; tip = tip || 'tip_rtt'; }
+    if (loss > 0.015) { level = 'ok'; tip = 'tip_loss'; }
+    if (loss > 0.05 || rtt > 300) { level = 'bad'; tip = loss > 0.05 ? 'tip_loss' : 'tip_rtt'; }
+    p.health = { level, tip };
+    p.stats = {
+      w: out.frameWidth, h: out.frameHeight, fps: out.framesPerSecond, bps, abps, rtt,
+      codec: st.get(out.codecId)?.mimeType?.split('/')[1] || '', gpu: out.powerEfficientEncoder,
+      relay: st.get(pair?.localCandidateId)?.candidateType === 'relay',
+    };
+    if (lim === 'cpu' || lim === 'bandwidth' || loss > 0.05) bad = true;
+    if (!(lim === 'none' && loss < 0.02 && avail >= 0.9 * need)) good = false;
+    if (!worst || RANK[level] > RANK[worst.level]) worst = p.health;
+    updateViewerRow(id);
+  }
+  if (screenStream) {
+    setHealth($('#overallHealth'), any ? worst.level : null, worst?.tip);
+    renderTip(any ? worst.tip : null);
+    if (any) autoStep(bad, good);
+    broadcastQuality();
+    showCaptureInfo();
   }
 }, 2000);
 
+document.addEventListener('langchange', () => {
+  setAgentStatus(); setMic(micOn); renderViewers(); updateTierBadge(); showCaptureInfo(); renderTip();
+  if (screenStream && signal?.ws?.readyState === 1) $('#sigText').textContent = t('server_on');
+  if (!$('#overallHealth').classList.contains('hidden')) setHealth($('#overallHealth'), null);
+});
+renderViewers();
 window.addEventListener('beforeunload', () => sendAgent({ t: 'release' }));
+// For automated tests
+window.__ss = { autoStep, target, tiers: () => tiers, tierIdx: () => tierIdx, peers };
 </script>
 </body>
 </html>

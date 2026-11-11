@@ -4,18 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ScreenStream</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<div class="center">
-  <div class="card join">
-    <div class="brand" style="margin-bottom:14px"><span class="dot"></span> ScreenStream</div>
-    <p class="muted">Share your screen in Full HD or higher, talk by voice, and let a viewer control your PC.</p>
-    <div class="grid" style="margin-top:16px">
-      <a href="/host"><button class="primary" style="width:100%">Host a stream</button></a>
-      <a href="/watch"><button style="width:100%">Join a stream</button></a>
+<body class="landing">
+<button class="lang-toggle chip-btn corner">VI</button>
+<main class="landing-wrap">
+  <div class="hero">
+    <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
+    <h1 class="brand-title" data-i18n="tagline"></h1>
+    <div class="hero-actions">
+      <a class="btn primary xl" href="/host"><span data-icon="play"></span><span data-i18n="host_btn">Host a stream</span></a>
+      <a class="btn xl" href="/watch"><span data-icon="screen"></span><span data-i18n="join_btn">Join a stream</span></a>
+    </div>
+    <div class="features">
+      <span class="chip"><span data-icon="screen"></span><span data-i18n="f_quality"></span></span>
+      <span class="chip"><span data-icon="mic"></span><span data-i18n="f_voice"></span></span>
+      <span class="chip"><span data-icon="cursor"></span><span data-i18n="f_control"></span></span>
+      <span class="chip"><span data-icon="chat"></span><span data-i18n="f_chat"></span></span>
     </div>
   </div>
-</div>
+</main>
+<script src="/common.js"></script>
+<script>initPage();</script>
 </body>
 </html>
