@@ -24,7 +24,7 @@
 
 <!-- Stream -->
 <div id="stage" class="stage hidden">
-  <video id="video" autoplay playsinline muted tabindex="0"></video>
+  <div id="vp" class="viewport"><video id="video" autoplay playsinline muted tabindex="0"></video></div>
   <div class="bar">
     <span id="state" class="pill warn">Connecting…</span>
     <button id="micBtn" class="small">Mic off</button>
@@ -32,6 +32,8 @@
     <label class="muted" style="margin:0;display:flex;align-items:center;gap:6px">Volume
       <input id="volume" type="range" min="0" max="1" step="0.05" value="1" style="width:90px;padding:0">
     </label>
+    <button id="sizeBtn" class="small" title="Show every pixel 1:1 - sharpest text">Actual size</button>
+    <button id="smoothBtn" class="small" title="Small extra delay that hides network hiccups">Smooth playback</button>
     <span class="spacer"></span>
     <span id="stats" class="stats"></span>
     <button id="fsBtn" class="small">Fullscreen</button>
@@ -102,6 +104,7 @@ async function onSignal(msg, iceServers) {
       else if (s === 'disconnected') setState('Reconnecting…', 'warn');
     };
     await pc.setRemoteDescription(data.sdp);
+    applySmooth();
     // Transceiver 2 is two-way voice: attach our mic
     const voice = pc.getTransceivers()[2];
     if (voice) {
@@ -132,6 +135,37 @@ function onTrack(e) {
 }
 document.addEventListener('click', () => audioEls.forEach((a) => a.paused && a.play().catch(() => {})));
 $('#volume').oninput = () => audioEls.forEach((a) => (a.volume = Number($('#volume').value)));
+
+// --- View options ---
+const pref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1'; } catch { return d; } };
+const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch {} };
+let nativeSize = pref('ss-native', false), smooth = pref('ss-smooth', false);
+
+// Actual size: 1 stream pixel = 1 screen pixel, so text is never blurred by scaling
+function applySize() {
+  $('#vp').classList.toggle('native', nativeSize);
+  if (nativeSize && video.videoWidth) {
+    video.style.width = video.videoWidth / devicePixelRatio + 'px';
+    video.style.height = video.videoHeight / devicePixelRatio + 'px';
+  } else {
+    video.style.width = video.style.height = '';
+  }
+  $('#sizeBtn').textContent = nativeSize ? 'Fit to window' : 'Actual size';
+  $('#sizeBtn').classList.toggle('on', nativeSize);
+}
+$('#sizeBtn').onclick = () => { nativeSize = !nativeSize; savePref('ss-native', nativeSize); applySize(); };
+video.addEventListener('resize', applySize);
+applySize();
+
+// Smooth playback: ~150 ms buffer hides network jitter (less stutter, slightly more delay)
+function applySmooth() {
+  pc?.getReceivers().forEach((r) => {
+    try { r.jitterBufferTarget = smooth ? 150 : null; } catch {}
+  });
+  $('#smoothBtn').classList.toggle('on', smooth);
+}
+$('#smoothBtn').onclick = () => { smooth = !smooth; savePref('ss-smooth', smooth); applySmooth(); };
+applySmooth();
 
 function setState(text, kind) { const el = $('#state'); el.textContent = text; el.className = 'pill ' + kind; }
 

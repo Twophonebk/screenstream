@@ -39,18 +39,20 @@
         <option value="12000000" selected>12 Mbps</option>
         <option value="20000000">20 Mbps</option>
         <option value="35000000">35 Mbps (4K / fast upload)</option>
+        <option value="50000000">50 Mbps (very fast upload)</option>
       </select>
-      <label>Content type</label>
+      <label>Content type (can change while live)</label>
       <select id="hint">
-        <option value="detail">Text / desktop work (sharp)</option>
-        <option value="motion">Games / video (smooth)</option>
+        <option value="mixed" selected>Mixed (recommended)</option>
+        <option value="detail">Text / desktop work (sharpest)</option>
+        <option value="motion">Games / video (smoothest)</option>
       </select>
       <label>Video codec</label>
       <select id="codec">
+        <option value="auto" selected>Auto (best for this PC)</option>
         <option value="video/H264">H.264 (best hardware support)</option>
         <option value="video/VP9">VP9</option>
         <option value="video/AV1">AV1 (best quality, newer GPUs)</option>
-        <option value="auto">Auto</option>
       </select>
       <label style="display:flex;gap:8px;align-items:center;color:var(--text)">
         <input id="sysAudio" type="checkbox" checked style="width:auto"> Share PC sound
@@ -104,16 +106,23 @@ const PRESETS = {
 const AGENT_URL = 'ws://127.0.0.1:8765';
 
 let iceServers, signal, screenStream, micStream, micOn = false;
+let codecInfo = { mime: 'auto', hw: false };
+const HINTS = {
+  mixed:  { hint: '',       degrade: 'balanced' },
+  detail: { hint: 'detail', degrade: 'maintain-resolution' },
+  motion: { hint: 'motion', degrade: 'maintain-framerate' },
+};
+const hintOf = () => HINTS[$('#hint').value] || HINTS.mixed;
 const peers = new Map(); // id -> { pc, dc, name, control: 'none'|'pending'|'on', audioEl, stats }
 
 // --- Settings memory ---
-const saved = (() => { try { return JSON.parse(localStorage.getItem('ss-host') || '{}'); } catch { return {}; } })();
+const saved = (() => { try { return JSON.parse(localStorage.getItem('ss-host2') || '{}'); } catch { return {}; } })();
 $('#room').value = saved.room || Math.random().toString(36).slice(2, 8).toUpperCase();
 $('#password').value = saved.password || '';
 for (const k of ['quality', 'bitrate', 'hint', 'codec']) if (saved[k]) $('#' + k).value = saved[k];
 function saveSettings() {
   try {
-    localStorage.setItem('ss-host', JSON.stringify({
+    localStorage.setItem('ss-host2', JSON.stringify({
       room: $('#room').value, password: $('#password').value,
       quality: $('#quality').value, bitrate: $('#bitrate').value, hint: $('#hint').value, codec: $('#codec').value,
     }));
@@ -188,9 +197,17 @@ async function start() {
     return toast('Screen sharing was cancelled', 'bad');
   }
   const vt = screenStream.getVideoTracks()[0];
-  vt.contentHint = $('#hint').value;
+  vt.contentHint = hintOf().hint;
   vt.addEventListener('ended', stop);
   $('#preview').srcObject = screenStream;
+
+  // Choose the codec (hardware encoder if the PC has one)
+  const cs = vt.getSettings();
+  if ($('#codec').value === 'auto') {
+    codecInfo = await pickBestCodec(cs.width || 1920, cs.height || 1080, p.fps, Number($('#bitrate').value));
+  } else {
+    codecInfo = { mime: $('#codec').value, hw: null };
+  }
   showCaptureInfo();
 
   // Microphone (optional – keep going without it)
@@ -242,7 +259,8 @@ function stop() {
 function showCaptureInfo() {
   const s = screenStream.getVideoTracks()[0].getSettings();
   const audio = screenStream.getAudioTracks().length ? 'PC sound on' : 'no PC sound';
-  $('#capInfo').textContent = `Capturing ${s.width}×${s.height} @ ${Math.round(s.frameRate || 0)} fps · ${s.displaySurface || 'screen'} · ${audio}`;
+  const codec = codecInfo.mime.split('/')[1] + (codecInfo.hw === true ? ' (graphics card)' : codecInfo.hw === false ? ' (CPU – no hardware encoder found)' : '');
+  $('#capInfo').textContent = `Capturing ${s.width}×${s.height} @ ${Math.round(s.frameRate || 0)} fps · ${s.displaySurface || 'screen'} · ${audio} · ${codec}`;
   $('#surfaceWarn').classList.toggle('hidden', !s.displaySurface || s.displaySurface === 'monitor');
 }
 
@@ -260,7 +278,7 @@ $('#bitrate').onchange = () => { saveSettings(); for (const p of peers.values())
 $('#hint').onchange = () => {
   saveSettings();
   const vt = screenStream?.getVideoTracks()[0];
-  if (vt) vt.contentHint = $('#hint').value;
+  if (vt) vt.contentHint = hintOf().hint;
   for (const p of peers.values()) applyEncoding(p);
 };
 
@@ -282,7 +300,7 @@ async function createPeer(id, name) {
   // Fixed transceiver order: 0 = screen video, 1 = PC sound, 2 = voice (two-way)
   const vt = screenStream.getVideoTracks()[0];
   const vtx = pc.addTransceiver(vt, { direction: 'sendonly', streams: [screenStream] });
-  preferCodec(vtx, $('#codec').value);
+  preferCodec(vtx, codecInfo.mime);
   pc.addTransceiver(screenStream.getAudioTracks()[0] || 'audio', { direction: 'sendonly' });
   pc.addTransceiver(micStream?.getAudioTracks()[0] || 'audio', { direction: 'sendrecv' });
 
@@ -317,7 +335,10 @@ async function handleRemoteSignal(id, data) {
   const peer = peers.get(id);
   if (!peer) return;
   try {
-    if (data.sdp) await peer.pc.setRemoteDescription(data.sdp);
+    if (data.sdp) {
+      const sdp = data.sdp.type === 'answer' ? boostBitrate(data.sdp.sdp, Number($('#bitrate').value)) : data.sdp.sdp;
+      await peer.pc.setRemoteDescription({ type: data.sdp.type, sdp });
+    }
     else if (data.candidate) await peer.pc.addIceCandidate(data.candidate);
   } catch (e) { console.warn(e); }
 }
@@ -333,7 +354,7 @@ async function applyEncoding(peer) {
   params.encodings[0].scaleResolutionDownBy = 1;
   params.encodings[0].priority = 'high';
   params.encodings[0].networkPriority = 'high';
-  params.degradationPreference = $('#hint').value === 'detail' ? 'maintain-resolution' : 'balanced';
+  params.degradationPreference = hintOf().degrade;
   try { await sender.setParameters(params); } catch (e) { console.warn('setParameters', e); }
 }
 
@@ -422,7 +443,8 @@ setInterval(async () => {
     let bps = 0;
     if (p.last) bps = ((out.bytesSent - p.last.bytes) * 8) / ((out.timestamp - p.last.ts) / 1000);
     p.last = { bytes: out.bytesSent, ts: out.timestamp };
-    const codec = stats.get(out.codecId)?.mimeType?.split('/')[1] || '';
+    const enc = out.powerEfficientEncoder === true ? ' GPU' : out.powerEfficientEncoder === false ? ' CPU' : '';
+    const codec = (stats.get(out.codecId)?.mimeType?.split('/')[1] || '') + enc;
     const limit = out.qualityLimitationReason && out.qualityLimitationReason !== 'none' ? ` · limited by ${out.qualityLimitationReason}` : '';
     p.statsText = `${out.frameWidth || '?'}×${out.frameHeight || '?'} @ ${Math.round(out.framesPerSecond || 0)} fps · ${fmtBitrate(bps)} · ${codec}${rtt != null ? ` · ${Math.round(rtt * 1000)} ms` : ''}${route}${limit}`;
     const el = document.querySelector(`[data-stats="${id}"]`);
