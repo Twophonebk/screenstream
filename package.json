@@ -1,0 +1,15 @@
+{
+  "name": "screenstream",
+  "version": "1.0.0",
+  "description": "Self-hosted 1080p+ screen streaming with voice and remote control (WebRTC)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+agent/.venv/
+agent/agent-config.json
+__pycache__/
