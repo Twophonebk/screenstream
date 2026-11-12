@@ -77,7 +77,8 @@ function endRoom(code) {
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  ws.ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 
@@ -102,6 +103,7 @@ wss.on('connection', (ws) => {
       clearTimeout(room.timer);
       room.passHash = hash(msg.password || '');
       room.host = ws;
+      room.hostIp = ws.ip;
       rooms.set(code, room);
       ws.role = 'host'; ws.room = code;
       send(ws, { type: 'created', room: code });
@@ -119,7 +121,7 @@ wss.on('connection', (ws) => {
       ws.role = 'viewer'; ws.room = code; ws.id = id;
       ws.name = String(msg.name || 'Viewer').slice(0, 32);
       room.viewers.set(id, ws);
-      send(ws, { type: 'joined', id });
+      send(ws, { type: 'joined', id, sameNet: !!ws.ip && ws.ip === room.hostIp });
       send(room.host, { type: 'viewer-joined', id, name: ws.name });
       return;
     }
