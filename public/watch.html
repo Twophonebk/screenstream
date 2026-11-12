@@ -8,7 +8,7 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="watch">
@@ -16,7 +16,7 @@
 <div id="joinView" class="join-screen">
   <div class="card join-card">
     <div class="join-head">
-      <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
+      <div class="brand"><span class="logo"></span><span class="brand-name">BeeBox</span></div>
       <button class="lang-toggle chip-btn">VI</button>
     </div>
     <h1 data-i18n="join_title">Join the stream</h1>
@@ -35,7 +35,7 @@
   <div id="reactLayer" class="react-layer"></div>
 
   <div class="ov ov-top">
-    <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
+    <div class="brand"><span class="logo"></span><span class="brand-name">BeeBox</span></div>
     <span id="state" class="live-badge off"><i></i><span id="stateText" data-i18n="connecting"></span></span>
     <span id="tierLabel" class="tier-badge hidden"></span>
     <span class="spacer"></span>
@@ -121,6 +121,7 @@ async function onSignal(msg, iceServers) {
   if (msg.type === 'joined') {
     $('#joinView').classList.add('hidden');
     stage.classList.remove('hidden');
+    document.body.classList.add('live');
     history.replaceState(null, '', `/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`);
     wake();
     return;

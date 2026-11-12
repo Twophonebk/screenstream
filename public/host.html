@@ -7,12 +7,12 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="host">
 <header class="topbar">
-  <a class="brand" href="/"><span class="logo"></span><span class="brand-name">ScreenStream</span><span class="tag" data-i18n="host_tag">Host</span></a>
+  <a class="brand" href="/"><span class="logo"></span><span class="brand-name">BeeBox</span><span class="tag" data-i18n="host_tag">Host</span></a>
   <div class="top-right">
     <span id="sigStatus" class="chip"><i class="dot"></i><span id="sigText" data-i18n="server">Server</span></span>
     <span id="agentStatus" class="chip"><i class="dot"></i><span id="agentText"></span></span>
@@ -396,6 +396,7 @@ async function start() {
   signal.send({ type: 'create', room, password: $('#password').value });
 
   $('#idle').classList.add('hidden');
+  document.body.classList.add('live');
   $('#liveBadge').classList.remove('hidden');
   $('#stopBtn').classList.remove('hidden');
   $('#overallHealth').classList.remove('hidden');
@@ -422,6 +423,7 @@ function stop() {
   $('#capInfo').textContent = '';
   for (const id of ['surfaceWarn', 'liveBadge', 'stopBtn', 'tierBadge', 'overallHealth', 'tip']) $('#' + id).classList.add('hidden');
   $('#idle').classList.remove('hidden');
+  document.body.classList.remove('live');
   $('#micBtn').disabled = true; setMic(false);
   for (const id of ['room', 'password', 'codec', 'sysAudio']) $('#' + id).disabled = false;
   renderViewers();

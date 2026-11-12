@@ -3,31 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScreenStream</title>
+<title>BeeBox</title>
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing">
-<button class="lang-toggle chip-btn corner">VI</button>
-<main class="landing-wrap">
-  <div class="hero">
-    <div class="brand"><span class="logo"></span><span class="brand-name">ScreenStream</span></div>
-    <h1 class="brand-title" data-i18n="tagline"></h1>
-    <div class="hero-actions">
-      <a class="btn primary xl" href="/host"><span data-icon="play"></span><span data-i18n="host_btn">Host a stream</span></a>
-      <a class="btn xl" href="/watch"><span data-icon="screen"></span><span data-i18n="join_btn">Join a stream</span></a>
+<div class="lp">
+  <nav class="lp-nav">
+    <a class="brand" href="/"><span class="logo"></span><span class="brand-name">BeeBox</span></a>
+    <div class="top-right">
+      <button class="lang-toggle chip-btn">VI</button>
+      <a class="btn sm" href="/watch" data-i18n="join_btn">Join a stream</a>
     </div>
-    <div class="features">
-      <span class="chip"><span data-icon="screen"></span><span data-i18n="f_quality"></span></span>
-      <span class="chip"><span data-icon="mic"></span><span data-i18n="f_voice"></span></span>
-      <span class="chip"><span data-icon="cursor"></span><span data-i18n="f_control"></span></span>
-      <span class="chip"><span data-icon="chat"></span><span data-i18n="f_chat"></span></span>
+  </nav>
+
+  <header class="hero2">
+    <div class="hero-copy">
+      <span class="chip hero-badge"><i class="dot"></i><span data-i18n="hero_badge"></span></span>
+      <h1><span data-i18n="hero_h1a"></span><br><span class="grad" data-i18n="hero_h1b"></span></h1>
+      <p data-i18n="tagline"></p>
+      <div class="hero-actions">
+        <a class="btn primary xl" href="/host"><span data-icon="play"></span><span data-i18n="host_btn">Host a stream</span></a>
+        <a class="btn xl" href="/watch"><span data-icon="screen"></span><span data-i18n="join_btn">Join a stream</span></a>
+      </div>
     </div>
-  </div>
-</main>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-frame">
+        <div class="mock-bar"><i></i><i></i><i></i><span>beebox · live</span></div>
+        <div class="mock-screen">
+          <span class="live-badge"><i></i><span data-i18n="live">LIVE</span></span>
+          <span class="tier-badge">1080p60 · Auto</span>
+          <div class="mock-win w1"><b></b><b></b><b></b><b></b></div>
+          <div class="mock-win w2"><span class="logo"></span></div>
+          <span class="mock-react r1">🔥</span><span class="mock-react r2">❤️</span><span class="mock-react r3">👍</span>
+          <div class="mock-dock"><b></b><b></b><b class="on"></b><b></b><b></b></div>
+        </div>
+      </div>
+      <div class="mock-chat">
+        <div class="msg"><b>Linh</b><span data-i18n="mock_msg1"></span></div>
+        <div class="msg self"><b>Bee</b><span data-i18n="mock_msg2"></span></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="lp-sec">
+    <h2 class="sec-title" data-i18n="feat_title"></h2>
+    <div class="feat-grid">
+      <div class="feat"><span class="hexi" data-icon="screen"></span><h3 data-i18n="feat1_t"></h3><p data-i18n="feat1_d"></p></div>
+      <div class="feat"><span class="hexi" data-icon="mic"></span><h3 data-i18n="feat2_t"></h3><p data-i18n="feat2_d"></p></div>
+      <div class="feat"><span class="hexi" data-icon="cursor"></span><h3 data-i18n="feat3_t"></h3><p data-i18n="feat3_d"></p></div>
+      <div class="feat"><span class="hexi" data-icon="chat"></span><h3 data-i18n="feat4_t"></h3><p data-i18n="feat4_d"></p></div>
+      <div class="feat"><span class="hexi" data-icon="phone"></span><h3 data-i18n="feat5_t"></h3><p data-i18n="feat5_d"></p></div>
+      <div class="feat"><span class="hexi" data-icon="lock"></span><h3 data-i18n="feat6_t"></h3><p data-i18n="feat6_d"></p></div>
+    </div>
+  </section>
+
+  <section class="lp-sec">
+    <h2 class="sec-title" data-i18n="how_title"></h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><h3 data-i18n="step1_t"></h3><p data-i18n="step1_d"></p></div>
+      <div class="step"><span class="num">2</span><h3 data-i18n="step2_t"></h3><p data-i18n="step2_d"></p></div>
+      <div class="step"><span class="num">3</span><h3 data-i18n="step3_t"></h3><p data-i18n="step3_d"></p></div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div><h2 data-i18n="cta_title"></h2><p data-i18n="cta_sub"></p></div>
+    <a class="btn primary xl" href="/host"><span data-icon="play"></span><span data-i18n="host_btn">Host a stream</span></a>
+  </section>
+
+  <footer class="lp-foot"><span class="brand"><span class="logo"></span><span class="brand-name">BeeBox</span></span><span data-i18n="footer"></span></footer>
+</div>
 <script src="/common.js"></script>
 <script>initPage();</script>
 </body>

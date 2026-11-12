@@ -7,6 +7,20 @@ const REACTIONS = ['👍', '😂', '🔥', '❤️', '👏', '😮'];
 const I18N = {
   en: {
     tagline: 'Share your screen in Full HD or higher. Talk by voice, chat, and let a friend take control.',
+    hero_badge: 'Free · No install · Runs in your browser', hero_h1a: 'Stream your screen,', hero_h1b: 'smooth as honey.',
+    feat_title: 'Everything in one box',
+    feat1_t: 'Up to 4K · 144 fps', feat1_d: 'Auto quality follows your connection, so the picture stays sharp and smooth.',
+    feat2_t: 'Voice + stereo PC sound', feat2_d: 'Talk both ways while your game or music plays in full stereo.',
+    feat3_t: 'Remote control', feat3_d: 'Let a friend use your mouse and keyboard. You approve first and can take it back any time.',
+    feat4_t: 'Chat & reactions', feat4_d: 'Messages and emoji fly across the stream for everyone in the room.',
+    feat5_t: 'Phones welcome', feat5_d: 'Send a link or a QR code. Viewers join from any browser, nothing to install.',
+    feat6_t: 'Private rooms', feat6_d: 'Every room has a password, and video goes directly between you and your viewers.',
+    how_title: 'Live in three steps',
+    step1_t: 'Open your box', step1_d: 'Set a password, pick a quality and share your screen.',
+    step2_t: 'Send the link', step2_d: 'Copy the link or show the QR code to your friends.',
+    step3_t: 'Enjoy together', step3_d: 'Watch, talk, chat, and hand over control when you want.',
+    cta_title: 'Ready to buzz?', cta_sub: 'Start a room in seconds. It is free.',
+    mock_msg1: 'So sharp! 🔥', mock_msg2: 'Welcome to the hive 🐝', footer: 'Made for streaming with friends',
     host_btn: 'Host a stream', join_btn: 'Join a stream',
     f_quality: 'Up to 4K · 144 fps', f_voice: 'Two-way voice', f_control: 'Remote control', f_chat: 'Chat & reactions',
     host_tag: 'Host', server: 'Server', server_on: 'Server connected', server_off: 'Server offline',
@@ -59,6 +73,20 @@ const I18N = {
   },
   vi: {
     tagline: 'Chia sẻ màn hình Full HD trở lên. Nói chuyện, nhắn tin và cho bạn bè điều khiển máy.',
+    hero_badge: 'Miễn phí · Không cần cài đặt · Chạy trên trình duyệt', hero_h1a: 'Phát màn hình,', hero_h1b: 'mượt như mật ong.',
+    feat_title: 'Tất cả trong một chiếc hộp',
+    feat1_t: 'Tới 4K · 144 fps', feat1_d: 'Chất lượng tự điều chỉnh theo mạng, hình luôn nét và mượt.',
+    feat2_t: 'Đàm thoại + âm thanh stereo', feat2_d: 'Nói chuyện hai chiều trong khi game hay nhạc vẫn phát stereo đầy đủ.',
+    feat3_t: 'Điều khiển từ xa', feat3_d: 'Cho bạn bè dùng chuột và bàn phím của bạn. Bạn duyệt trước và lấy lại bất cứ lúc nào.',
+    feat4_t: 'Chat & biểu cảm', feat4_d: 'Tin nhắn và emoji bay trên màn hình cho mọi người trong phòng.',
+    feat5_t: 'Xem trên điện thoại', feat5_d: 'Gửi liên kết hoặc mã QR. Người xem vào bằng trình duyệt, không cần cài gì.',
+    feat6_t: 'Phòng riêng tư', feat6_d: 'Mỗi phòng có mật khẩu, video truyền trực tiếp giữa bạn và người xem.',
+    how_title: 'Lên sóng trong ba bước',
+    step1_t: 'Mở hộp của bạn', step1_d: 'Đặt mật khẩu, chọn chất lượng rồi chia sẻ màn hình.',
+    step2_t: 'Gửi liên kết', step2_d: 'Sao chép liên kết hoặc đưa mã QR cho bạn bè.',
+    step3_t: 'Cùng thưởng thức', step3_d: 'Xem, nói chuyện, nhắn tin và trao quyền điều khiển khi bạn muốn.',
+    cta_title: 'Sẵn sàng lên sóng?', cta_sub: 'Tạo phòng trong vài giây. Hoàn toàn miễn phí.',
+    mock_msg1: 'Nét quá! 🔥', mock_msg2: 'Chào mừng vào tổ 🐝', footer: 'Dành cho những buổi phát cùng bạn bè',
     host_btn: 'Phát trực tiếp', join_btn: 'Tham gia xem',
     f_quality: 'Tới 4K · 144 fps', f_voice: 'Đàm thoại hai chiều', f_control: 'Điều khiển từ xa', f_chat: 'Chat & biểu cảm',
     host_tag: 'Chủ phòng', server: 'Máy chủ', server_on: 'Đã kết nối máy chủ', server_off: 'Mất kết nối máy chủ',
@@ -166,6 +194,8 @@ const ICON_PATHS = {
   text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
   users: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/>',
+  phone: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 };
 function icon(name) {
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ''}</svg>`;
@@ -189,9 +219,27 @@ function inkFor(hex) {
   const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
   return l > 0.6 ? '#141006' : '#ffffff';
 }
+// BeeBox logo: a honey cube (seen from the corner it is a honeycomb cell) with bee stripes
+const LOGO_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 28 9 16 16 4 9z" fill="#ffd95a"/><path d="M4 9l12 7v14L4 23z" fill="#ffb703"/><path d="M28 9v14l-12 7V16z" fill="#f08c00"/><path d="M4 13l12 7v3.2l-12-7zM4 19.4l12 7V29.6l-12-7z" fill="#1a1200"/><path d="M20 17.6v7.2l5.4-6.6z" fill="#1a1200"/></svg>';
+const BEE_SVG = '<svg viewBox="0 0 40 28"><ellipse cx="14" cy="8" rx="8" ry="5" fill="#fff" opacity=".45"/><ellipse cx="24" cy="7" rx="7" ry="4.5" fill="#fff" opacity=".3"/><ellipse cx="20" cy="17" rx="12" ry="8" fill="#ffb703"/><path d="M15 10.5v13M21 9.5v15M27 11.5v11" stroke="#1a1200" stroke-width="3"/><circle cx="31" cy="15" r="1.3" fill="#1a1200"/></svg>';
+// Animated background. Only transform/opacity are animated, so the graphics card does the work
+// and the stream encoder is not affected. It is paused while live (see style.css).
+function mountBg() {
+  if (document.querySelector('.bg-fx')) return;
+  const fx = document.createElement('div');
+  fx.className = 'bg-fx';
+  fx.setAttribute('aria-hidden', 'true');
+  let h = '<div class="comb-mask"><div class="comb"></div></div><i class="glow g1"></i><i class="glow g2"></i>';
+  const hx = [[5, 70, 26, 0], [17, 34, 34, -12], [30, 90, 30, -5], [45, 44, 38, -20], [57, 110, 28, -9], [69, 52, 36, -27], [81, 76, 31, -15], [92, 40, 40, -3]];
+  for (const a of hx) h += '<i class="hx" style="--x:' + a[0] + '%;--s:' + a[1] + 'px;--d:' + a[2] + 's;--dl:' + a[3] + 's"></i>';
+  const bees = [[20, 38, -4], [56, 52, -30], [78, 45, -18]];
+  for (const b of bees) h += '<span class="bee" style="--y:' + b[0] + '%;--d:' + b[1] + 's;--dl:' + b[2] + 's">' + BEE_SVG + '</span>';
+  fx.innerHTML = h;
+  document.body.prepend(fx);
+}
 async function applyBrand(pageKey) {
   const { brand = {} } = await loadConfig();
-  const name = brand.name || 'ScreenStream';
+  const name = brand.name || 'BeeBox';
   $$('.brand-name').forEach((e) => { e.textContent = name; });
   document.title = pageKey ? `${name} · ${t(pageKey)}` : name;
   if (brand.color) {
@@ -200,7 +248,7 @@ async function applyBrand(pageKey) {
   }
   $$('.logo').forEach((e) => {
     if (brand.logo) { e.innerHTML = ''; const img = new Image(); img.src = brand.logo; img.alt = ''; e.appendChild(img); }
-    else e.innerHTML = icon('logo');
+    else e.innerHTML = LOGO_SVG;
   });
 }
 function initPage(pageKey) {
@@ -208,6 +256,7 @@ function initPage(pageKey) {
   applyI18n();
   applyBrand(pageKey);
   document.addEventListener('langchange', () => applyBrand(pageKey));
+  mountBg();
 }
 
 // ------------------------------------------------------------------ signaling
