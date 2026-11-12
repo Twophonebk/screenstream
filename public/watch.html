@@ -122,6 +122,13 @@ async function onSignal(msg, iceServers) {
     $('#joinView').classList.add('hidden');
     stage.classList.remove('hidden');
     document.body.classList.add('live');
+    // Watching on the PC that is streaming: its speakers would be captured again and loop forever
+    try {
+      if (Date.now() - Number(localStorage.getItem('bb-live') || 0) < 8000) {
+        muted = true; updateMuteBtn();
+        setTimeout(() => toast(t('same_pc')), 800);
+      }
+    } catch {}
     history.replaceState(null, '', `/watch?room=${encodeURIComponent($('#room').value.trim().toUpperCase())}`);
     wake();
     return;
@@ -136,7 +143,9 @@ async function onSignal(msg, iceServers) {
 
   const data = msg.data;
   if (data.sdp && data.sdp.type === 'offer') {
+    dc = null;
     pc?.close();
+    audioEls.splice(0).forEach((a) => { a.pause(); a.srcObject = null; });
     pc = new RTCPeerConnection({ iceServers });
     pc.onicecandidate = (e) => e.candidate && signal.send({ type: 'signal', data: { candidate: e.candidate } });
     pc.ontrack = onTrack;
@@ -164,6 +173,11 @@ async function onSignal(msg, iceServers) {
   }
 }
 
+function streamEnded() {
+  setState('host_ended', 'off');
+  $('#waiting').classList.remove('hidden'); $('#waiting span').textContent = t('host_ended');
+  $('#waiting .spinner').classList.add('hidden');
+}
 function setState(key, kind) {
   stateKey = key; stateKind = kind;
   $('#state').className = 'live-badge' + (kind === 'live' ? '' : ' off');
@@ -335,7 +349,7 @@ function incomingChat(line) {
 function setupDataChannel(channel) {
   dc = channel;
   dc.onopen = () => { $('#ctlBtn').disabled = false; };
-  dc.onclose = () => { setCanControl(false); $('#ctlBtn').disabled = true; };
+  dc.onclose = () => { setCanControl(false); $('#ctlBtn').disabled = true; if (dc === channel) streamEnded(); };
   dc.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
     switch (msg.t) {
@@ -514,6 +528,8 @@ function refreshTexts() {
 }
 refreshTexts();
 document.addEventListener('langchange', refreshTexts);
+// Tell the host right away when this tab closes
+window.addEventListener('pagehide', () => { try { pc?.close(); } catch {} });
 </script>
 </body>
 </html>

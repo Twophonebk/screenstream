@@ -37,10 +37,12 @@
       </div>
       <div class="stage-bar">
         <button id="micBtn" class="icon-btn" disabled></button>
+        <button id="sndBtn" class="icon-btn hidden"></button>
         <button id="stopBtn" class="btn danger hidden"><span data-icon="stop"></span><span data-i18n="end_stream">End stream</span></button>
         <div id="capInfo" class="cap-info muted"></div>
       </div>
       <div id="surfaceWarn" class="banner hidden" data-i18n="surface_warn"></div>
+      <div id="echoNote" class="banner hidden"></div>
     </div>
 
     <div class="card">
@@ -240,7 +242,7 @@ function initTiers() {
 function target() {
   if (preset === 'auto' && tiers.length) {
     const tr = tiers[tierIdx];
-    return { h: tr.h, fps: tr.fps, bps: tr.bps, hint: 'mixed', label: `${Math.min(tr.h, native.h)}p${tr.fps}` };
+    return { h: tr.h, fps: tr.fps, bps: tr.bps, hint: 'motion', degrade: 'balanced', label: `${Math.min(tr.h, native.h)}p${tr.fps}` };
   }
   const res = $('#res').value;
   const h = res === 'native' ? native.h : Number(res);
@@ -259,7 +261,7 @@ async function applyQuality() {
   for (const p of peers.values()) applyEncoding(p, tg);
   if (preset === 'auto') {
     $('#res').value = tg.h >= native.h ? 'native' : String(tg.h);
-    $('#fps').value = String(tg.fps); $('#bitrate').value = String(nearestBitrate(tg.bps)); $('#hint').value = 'mixed';
+    $('#fps').value = String(tg.fps); $('#bitrate').value = String(nearestBitrate(tg.bps)); $('#hint').value = 'motion';
   }
   updateTierBadge();
   broadcastQuality();
@@ -281,9 +283,9 @@ async function applyEncoding(peer, tg = target()) {
   const params = sender.getParameters();
   if (!params.encodings || !params.encodings.length) params.encodings = [{}];
   Object.assign(params.encodings[0], {
-    maxBitrate: tg.bps, maxFramerate: tg.fps, scaleResolutionDownBy: 1, priority: 'high', networkPriority: 'high',
+    maxBitrate: tg.bps, maxFramerate: tg.fps, scaleResolutionDownBy: 1, priority: 'high',
   });
-  params.degradationPreference = HINTS[tg.hint].degrade;
+  params.degradationPreference = tg.degrade || HINTS[tg.hint].degrade;
   try { await sender.setParameters(params); } catch (e) { console.warn('setParameters', e); }
 }
 
@@ -372,6 +374,17 @@ async function start() {
   const s = vt.getSettings();
   native = { w: s.width || 1920, h: s.height || 1080 };
   $('#preview').srcObject = screenStream;
+  const at = screenStream.getAudioTracks()[0];
+  $('#sndBtn').classList.toggle('hidden', !at);
+  setSnd(true);
+  if (at) {
+    // true = the browser removes this page's own sound (the viewers' voices) from the captured PC sound
+    const own = at.getSettings().restrictOwnAudio === true;
+    $('#echoNote').textContent = t(own ? 'echo_note' : 'echo_warn');
+    $('#echoNote').classList.toggle('note', own);
+    $('#echoNote').classList.remove('hidden');
+  }
+  try { localStorage.setItem('bb-live', String(Date.now())); } catch {}
 
   codecInfo = $('#codec').value === 'auto'
     ? await pickBestCodec(native.w, native.h, 60, 12e6)
@@ -381,7 +394,7 @@ async function start() {
   await applyQuality();
 
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: 'all', noiseSuppression: true, autoGainControl: true } });
     setMic(true);
     $('#micBtn').disabled = false;
   } catch { toast(t('no_mic')); }
@@ -417,11 +430,12 @@ function stop() {
   screenStream?.getTracks().forEach((tr) => tr.stop());
   micStream?.getTracks().forEach((tr) => tr.stop());
   screenStream = micStream = null;
-  if (signal?.ws) { signal.ws.onclose = null; signal.ws.close(); }
+  if (signal?.ws) { signal.send({ type: 'end' }); signal.ws.onclose = null; signal.ws.close(); }
+  try { localStorage.removeItem('bb-live'); } catch {}
   $('#sigStatus').className = 'chip'; $('#sigText').textContent = t('server');
   $('#preview').srcObject = null;
   $('#capInfo').textContent = '';
-  for (const id of ['surfaceWarn', 'liveBadge', 'stopBtn', 'tierBadge', 'overallHealth', 'tip']) $('#' + id).classList.add('hidden');
+  for (const id of ['surfaceWarn', 'liveBadge', 'stopBtn', 'tierBadge', 'overallHealth', 'tip', 'echoNote', 'sndBtn']) $('#' + id).classList.add('hidden');
   $('#idle').classList.remove('hidden');
   document.body.classList.remove('live');
   $('#micBtn').disabled = true; setMic(false);
@@ -451,14 +465,34 @@ function setMic(on) {
   b.title = t(micOn ? 'mic_on' : 'mic_off');
 }
 $('#micBtn').onclick = () => setMic(!micOn);
+let sndOn = true;
+function setSnd(on) {
+  sndOn = on;
+  screenStream?.getAudioTracks().forEach((tr) => (tr.enabled = on));
+  const b = $('#sndBtn');
+  b.innerHTML = icon(on ? 'volume' : 'volumeOff');
+  b.classList.toggle('on', on); b.classList.toggle('off', !on);
+  b.title = t('pc_sound');
+}
+$('#sndBtn').onclick = () => setSnd(!sndOn);
 setMic(false);
 
 // ---------------------------------------------------------------- signaling + peers
 function onSignal(msg) {
   if (msg.type === 'created') toast(t('live_in', { room: msg.room }), 'ok');
   else if (msg.type === 'error') { toast(msg.message, 'bad'); if (!peers.size) stop(); }
-  else if (msg.type === 'viewer-joined') createPeer(msg.id, msg.name);
-  else if (msg.type === 'viewer-left') closePeer(msg.id);
+  else if (msg.type === 'viewer-joined') {
+    const ex = peers.get(msg.id);
+    if (!ex || !['new', 'connecting', 'connected'].includes(ex.pc.connectionState)) createPeer(msg.id, msg.name);
+  }
+  else if (msg.type === 'viewer-left') {
+    // The viewer's link to the server closed. Only drop them if their video link is gone too.
+    const ex = peers.get(msg.id);
+    if (!ex) return;
+    ex.gone = true;
+    if (ex.dc?.readyState !== 'open') closePeer(msg.id);
+    else setTimeout(() => { if (peers.get(msg.id) === ex && ex.pc.connectionState !== 'connected') closePeer(msg.id); }, 8000);
+  }
   else if (msg.type === 'signal') handleRemoteSignal(msg.from, msg.data);
 }
 
@@ -484,7 +518,8 @@ async function createPeer(id, name) {
   };
   pc.onicecandidate = (e) => e.candidate && signal.send({ type: 'signal', to: id, data: { candidate: e.candidate } });
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') applyEncoding(peer);
+    if (pc.connectionState === 'connected') { peer.since = peer.since || Date.now(); applyEncoding(peer); }
+    if (peer.gone && ['disconnected', 'failed', 'closed'].includes(pc.connectionState)) return closePeer(id);
     if (pc.connectionState === 'failed') toast(t('conn_failed', { name }), 'bad');
     renderViewers();
   };
@@ -493,6 +528,7 @@ async function createPeer(id, name) {
   peer.dc = dc;
   dc.onopen = () => { dcSend(peer, { t: 'agent', ok: agentOk }); sendQuality(peer); };
   dc.onmessage = (e) => { try { onPeerMessage(id, JSON.parse(e.data)); } catch {} };
+  dc.onclose = () => { if (peers.get(id) === peer) closePeer(id); };
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -690,8 +726,14 @@ setInterval(async () => {
       codec: st.get(out.codecId)?.mimeType?.split('/')[1] || '', gpu: out.powerEfficientEncoder,
       relay: st.get(pair?.localCandidateId)?.candidateType === 'relay',
     };
-    if (lim === 'cpu' || lim === 'bandwidth' || loss > 0.05) bad = true;
-    if (!(lim === 'none' && loss < 0.02 && avail >= 0.9 * need)) good = false;
+    // Share of the last interval in which the encoder was held back by CPU or bandwidth
+    const durs = out.qualityLimitationDurations || {};
+    const limited = (durs.cpu || 0) + (durs.bandwidth || 0);
+    const limFrac = p.lim ? (limited - p.lim.v) / Math.max(0.5, (out.timestamp - p.lim.t) / 1000) : 0;
+    p.lim = { v: limited, t: out.timestamp };
+    const warm = Date.now() - (p.since || Date.now()) > 12000;
+    if (warm && (limFrac > 0.6 || loss > 0.05)) bad = true;
+    if (!(limFrac < 0.1 && loss < 0.02 && avail >= 0.9 * need)) good = false;
     if (!worst || RANK[level] > RANK[worst.level]) worst = p.health;
     updateViewerRow(id);
   }
@@ -699,6 +741,7 @@ setInterval(async () => {
     setHealth($('#overallHealth'), any ? worst.level : null, worst?.tip);
     renderTip(any ? worst.tip : null);
     if (any) autoStep(bad, good);
+    try { localStorage.setItem('bb-live', String(Date.now())); } catch {}
     broadcastQuality();
     showCaptureInfo();
   }

@@ -70,6 +70,9 @@ const I18N = {
     click_sound: 'Tap anywhere to turn on sound', mic_blocked: 'Microphone access was blocked',
     vtip_net: 'Your connection is unstable. Try Smooth playback or a wired connection.',
     stats: 'Stats',
+    echo_note: 'PC sound is on. Wear headphones, otherwise your mic picks up the speakers and viewers hear an echo.',
+    echo_warn: 'This browser cannot remove the voices of viewers from the PC sound, so they may hear themselves. Update Chrome or Edge to the latest version, and wear headphones.',
+    same_pc: 'You are watching on the PC that is streaming. Sound is muted here to stop a feedback loop.',
   },
   vi: {
     tagline: 'Chia sẻ màn hình Full HD trở lên. Nói chuyện, nhắn tin và cho bạn bè điều khiển máy.',
@@ -136,6 +139,9 @@ const I18N = {
     click_sound: 'Chạm vào màn hình để bật âm thanh', mic_blocked: 'Quyền micro bị chặn',
     vtip_net: 'Mạng của bạn không ổn định. Thử bật Phát mượt hoặc dùng dây mạng.',
     stats: 'Thông số',
+    echo_note: 'Đang chia sẻ âm thanh máy. Hãy đeo tai nghe, nếu không mic sẽ thu lại tiếng loa và người xem nghe bị vọng.',
+    echo_warn: 'Trình duyệt này không tách được giọng người xem khỏi âm thanh máy nên họ có thể nghe lại giọng mình. Hãy cập nhật Chrome hoặc Edge bản mới nhất và đeo tai nghe.',
+    same_pc: 'Bạn đang xem trên chính máy đang phát. Âm thanh ở đây đã được tắt để tránh tiếng lặp vô hạn.',
   },
 };
 const SERVER_ERRORS = {
