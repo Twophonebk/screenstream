@@ -1,4 +1,4 @@
-# ScreenStream
+# BeeBox
 
 Stream your screen at 1080p, 1440p or 4K (up to 144 fps), talk by voice both ways, chat, send reactions, and let a viewer control your PC (only after you click **Allow**). English and Vietnamese built in.
 
