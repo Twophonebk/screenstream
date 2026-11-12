@@ -101,10 +101,7 @@ async function join() {
   try { localStorage.setItem('ss-name', $('#name').value); } catch {}
   $('#joinBtn').disabled = true;
 
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-    micOn = true;
-  } catch { micStream = null; micOn = false; }
+  micStream = null; micOn = false; // the mic is asked for only when the viewer taps the mic button
   updateMicBtn();
 
   const iceServers = await getIceServers();
@@ -122,6 +119,11 @@ async function onSignal(msg, iceServers) {
     $('#joinView').classList.add('hidden');
     stage.classList.remove('hidden');
     document.body.classList.add('live');
+    // Same network as the host, so probably the same room: start silent, one tap turns sound on
+    if (msg.sameNet) {
+      muted = true; updateMuteBtn();
+      $('#vtipText').textContent = t('same_net'); $('#vtip').classList.remove('hidden');
+    }
     // Watching on the PC that is streaming: its speakers would be captured again and loop forever
     try {
       if (Date.now() - Number(localStorage.getItem('bb-live') || 0) < 8000) {
@@ -204,7 +206,7 @@ document.addEventListener('click', () => audioEls.forEach((a) => a.paused && a.p
 let muted = false;
 function applyVolume(el) { el.volume = Number($('#volume').value); el.muted = muted; }
 $('#volume').oninput = () => { muted = false; audioEls.forEach(applyVolume); updateMuteBtn(); };
-$('#muteBtn').onclick = () => { muted = !muted; audioEls.forEach(applyVolume); updateMuteBtn(); };
+$('#muteBtn').onclick = () => { muted = !muted; audioEls.forEach(applyVolume); updateMuteBtn(); if (!muted) $('#vtip').classList.add('hidden'); };
 function updateMuteBtn() {
   const b = $('#muteBtn');
   b.innerHTML = icon(muted || Number($('#volume').value) === 0 ? 'volumeOff' : 'volume');
