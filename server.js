@@ -67,6 +67,14 @@ const rooms = new Map();
 const hash = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 const send = (ws, msg) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); };
 
+function endRoom(code) {
+  const room = rooms.get(code);
+  if (!room) return;
+  clearTimeout(room.timer);
+  for (const v of room.viewers.values()) send(v, { type: 'host-left' });
+  rooms.delete(code);
+}
+
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
 
 wss.on('connection', (ws) => {
@@ -86,7 +94,12 @@ wss.on('connection', (ws) => {
       if (existing && existing.host && existing.host.readyState === 1) {
         return send(ws, { type: 'error', message: 'That room is already being hosted.' });
       }
+      // A room waiting for its host to reconnect can only be reclaimed with the same password
+      if (existing && existing.passHash !== hash(msg.password || '')) {
+        return send(ws, { type: 'error', message: 'That room is already being hosted.' });
+      }
       const room = existing || { viewers: new Map() };
+      clearTimeout(room.timer);
       room.passHash = hash(msg.password || '');
       room.host = ws;
       rooms.set(code, room);
@@ -111,6 +124,12 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    if (msg.type === 'end') {
+      const room = rooms.get(ws.room);
+      if (ws.role === 'host' && room && room.host === ws) endRoom(ws.room);
+      return;
+    }
+
     // Relay WebRTC signaling between host and a viewer
     if (msg.type === 'signal') {
       const room = rooms.get(ws.room);
@@ -127,8 +146,9 @@ wss.on('connection', (ws) => {
     const room = rooms.get(ws.room);
     if (!room) return;
     if (ws.role === 'host' && room.host === ws) {
-      for (const v of room.viewers.values()) send(v, { type: 'host-left' });
-      rooms.delete(ws.room);
+      // Video is peer-to-peer and keeps playing, so give the host 30 s to reconnect before ending the room
+      const code = ws.room;
+      room.timer = setTimeout(() => { if (rooms.get(code) === room && room.host === ws) endRoom(code); }, 30000);
     } else if (ws.role === 'viewer') {
       room.viewers.delete(ws.id);
       send(room.host, { type: 'viewer-left', id: ws.id });
